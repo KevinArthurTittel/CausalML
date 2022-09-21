@@ -162,5 +162,5 @@ library(haven)
       }
   
     LLCF.CATE <- mean(predictions.new)
-    resultsTable3OriginalPaper[(i+1),4] <- paste(LLCF.CATE, "(", LLCF.CATE.SE, ")")
-  }
+  resultsTable3OriginalPaper[(i+1),4] <- paste(LLCF.CATE, "(", LLCF.CATE.SE, ")")
+}
