@@ -115,10 +115,10 @@ library(haven)
                     num.trees = 8000, tune.parameters = "all")
         tauhat <- predict(CF.CR)$predictions
     
-        # Graph the predicted Cluster-Robust CF heterogeneous treatment effect estimates
+      # Graph the predicted Cluster-Robust CF heterogeneous treatment effect estimates
         hist(tauhat)
     
-        # Compute CATE with corresponding 95% confidence intervals
+      # Compute CATE with corresponding 95% confidence intervals
         CATE.CR <- average_treatment_effect(CF.CR, target.sample = "all")
         resultsTable1OriginalPaper[(i+1),3] <- paste(round(CATE.CR[1], 3), "(", round(CATE.CR[2], 3), ")")
         # results[i,4] <- paste("[", (round(CATE.CR[1], 3) - (round(qnorm(0.975) * CATE.CR[2], 3))), ",",  
@@ -128,7 +128,7 @@ library(haven)
   
     # Linear Local Causal Forest estimation:
        # Grow preliminary forests for (W, X) and (Y, X) separately
-         forest.W <- ll_regression_forest(X, W, honesty = TRUE)
+        forest.W <- ll_regression_forest(X, W, honesty = TRUE)
         W.hat <- predict(forest.W)$predictions
         forest.Y <- ll_regression_forest(X, Y, honesty = TRUE)
         Y.hat <- predict(forest.Y)$predictions
