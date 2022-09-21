@@ -168,7 +168,7 @@ lambdas = c(0, 0.1, 0.3, 0.5, 0.7, 1, 1.5)
       }
   
     LLCF.CATE <- mean(predictions.new)
-    resultsTable2OriginalPaper[(i+1),4] <- paste(LLCF.CATE, "(", LLCF.CATE.SE, ")")
-  }
+  resultsTable2OriginalPaper[(i+1),4] <- paste(LLCF.CATE, "(", LLCF.CATE.SE, ")")
+}
 
 
