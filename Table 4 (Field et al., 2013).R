@@ -68,6 +68,8 @@ library(haven)
                  "customers pre-order goods or service", "number of goods and services provided")
   resultsTable4OriginalPaper[1,] <- c("dependent variable", "CF", "Cluster-robust CF", "LLCF")
 
+lambdas = c(0, 0.1, 0.3, 0.5, 0.7, 1, 1.5)
+
 # Estimation procedure
   for (i in 1:6) {
     Y <- Grace_Period_Data[,(68+i)]
