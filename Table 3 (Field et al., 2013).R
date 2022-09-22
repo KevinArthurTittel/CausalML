@@ -127,40 +127,40 @@ library(haven)
         # round(CATE.CR[1], 3) + (round(qnorm(0.975) * CATE.CR[2], 3)))
   
     # Linear Local Causal Forest estimation:
-    # Grow preliminary forests for (W, X) and (Y, X) separately
-      forest.W <- ll_regression_forest(X, W, honesty = TRUE)
-      W.hat <- predict(forest.W)$predictions
-      forest.Y <- ll_regression_forest(X, Y, honesty = TRUE)
-      Y.hat <- predict(forest.Y)$predictions
+      # Grow preliminary forests for (W, X) and (Y, X) separately
+        forest.W <- ll_regression_forest(X, W, honesty = TRUE)
+        W.hat <- predict(forest.W)$predictions
+        forest.Y <- ll_regression_forest(X, Y, honesty = TRUE)
+        Y.hat <- predict(forest.Y)$predictions
   
-    # Select variables to include using preliminary LLCF
-      # lasso.mod <- cv.glmnet(X, Y, alpha = 1)
-      # selected <- which(coef(lasso.mod) != 0)
-      # if(length(selected) < 2) {
-      #   selected <- 1:ncol(X)
-      # } else {
-      #   selected <- selected[-1] - 1 # Remove intercept
-      # }
+      # Select variables to include using preliminary LLCF
+        # lasso.mod <- cv.glmnet(X, Y, alpha = 1)
+        # selected <- which(coef(lasso.mod) != 0)
+        # if(length(selected) < 2) {
+        #   selected <- 1:ncol(X)
+        # } else {
+        #   selected <- selected[-1] - 1 # Remove intercept
+        # }
   
-    # Implement LLCF
-      LLCF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE, num.trees = 8000, tune.parameters = "all")
-      # LLCF.pred <- predict(LLCF, linear.correction.variables = selected, ll.weight.penalty = TRUE, estimate.variance = TRUE)
-      # LLCF.CATE <- mean(LLCF.pred$predictions)
-      # LLCF.CATE.SE <- mean((LLCF.pred$predictions - mean(LLCF.pred$predictions))^2)
+      # Implement LLCF
+        LLCF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE, num.trees = 8000, tune.parameters = "all")
+        # LLCF.pred <- predict(LLCF, linear.correction.variables = selected, ll.weight.penalty = TRUE, estimate.variance = TRUE)
+        # LLCF.CATE <- mean(LLCF.pred$predictions)
+        # LLCF.CATE.SE <- mean((LLCF.pred$predictions - mean(LLCF.pred$predictions))^2)
   
-    # Predict: tuning done using set of lambdas
-      llcf.mse.old <- +Inf
-      for (l in length(lambdas)) {
-        llcf.pred.old <- predict(LLCF, linear.correction.variables = 1:ncol(X), ll.lambda = lambdas[l], ll.weight.penalty = TRUE, estimate.variance = TRUE)
-        predictions <- llcf.pred.old$predictions
-        llcf.mse.new <- mean((predictions - mean(predictions))**2)
-        if (llcf.mse.new < llcf.mse.old) {
-          llcf.mse.old <- llcf.mse.new
-          LLCF.CATE.SE <- sqrt(mean(llcf.pred.old$variance.estimates))
-          predictions.new <- predictions
+      # Predict: tuning done using set of lambdas
+        llcf.mse.old <- +Inf
+        for (l in length(lambdas)) {
+          llcf.pred.old <- predict(LLCF, linear.correction.variables = 1:ncol(X), ll.lambda = lambdas[l], ll.weight.penalty = TRUE, estimate.variance = TRUE)
+          predictions <- llcf.pred.old$predictions
+          llcf.mse.new <- mean((predictions - mean(predictions))**2)
+          if (llcf.mse.new < llcf.mse.old) {
+            llcf.mse.old <- llcf.mse.new
+            LLCF.CATE.SE <- sqrt(mean(llcf.pred.old$variance.estimates))
+            predictions.new <- predictions
+          }
         }
-      }
   
-    LLCF.CATE <- mean(predictions.new)
-  resultsTable3OriginalPaper[(i+1),4] <- paste(LLCF.CATE, "(", LLCF.CATE.SE, ")")
-}
+      LLCF.CATE <- mean(predictions.new)
+    resultsTable3OriginalPaper[(i+1),4] <- paste(LLCF.CATE, "(", LLCF.CATE.SE, ")")
+  }
