@@ -6,8 +6,11 @@ For the MSc Econometrics & Management Science, specializing in Business Analytic
 
 This folder contains replication files for my theoretical MSc thesis titled "Robust Smooth Heterogeneous Treatment Effect Estimation using Causal Machine Learning", as well as a general introduction for the reader. All selected settings for the algorithms here are described in my thesis. Contained in this folder are:
 
-- Table 1 (Field et al., 2013).R: extends Table 1 of the original paper of Field et al. (2013) by applying CF, Cluster-Robust CF, and LLCF on the original analysis.
-- Table 2 (Field et al., 2013).R: extends Table 2 of the original paper of Field et al. (2013) by applying CF, Cluster-Robust CF, and LLCF on the original analysis.
+- Extension Table 1 (Field et al., 2013).R: extends Table 1 of the original paper of Field et al. (2013) by applying CF, Cluster-Robust CF, and LLCF on the original analysis.
+- Extension Table 2 (Field et al., 2013).R: extends Table 2 of the original paper of Field et al. (2013) by applying CF, Cluster-Robust CF, and LLCF on the original analysis.
+- Extension Table 3 (Field et al., 2013).R: extends Table 2 of the original paper of Field et al. (2013) by applying CF, Cluster-Robust CF, and LLCF on the original analysis.
+- Extension Table 4 (Field et al., 2013).R: extends Table 2 of the original paper of Field et al. (2013) by applying CF, Cluster-Robust CF, and LLCF on the original analysis.
+- Extension Table 5 (Field et al., 2013).R: extends Table 2 of the original paper of Field et al. (2013) by applying CF, Cluster-Robust CF, and LLCF on the original analysis.
 
 # Required packages
 
