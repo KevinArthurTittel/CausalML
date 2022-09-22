@@ -60,12 +60,14 @@ library(haven)
     # X <- as.matrix(cbind(X, stratifmatrix, loansizematrix, loanofficermatrix))
     X <- as.matrix(cbind(X, loansizematrix))
     # X[X == "NA"] <- 0 # Set all missing values to 0 as done in original paper
-    
+ 
 # Initialize results matrix
   resultsTable5OriginalPaper <- matrix(data = 0, nrow = 5, ncol = 6)
   resultsTable5OriginalPaper[1,] <- t(c("dependent variable", "savings", "risk loving", "wage earner", "household member chronically ill",
                    "impatient"))
   resultsTable5OriginalPaper[2:5,1] <- c("CF", "Cluster-robust CF", "LLCF", "observations")
+
+lambdas = c(0, 0.1, 0.3, 0.5, 0.7, 1, 1.5)
 
 # Estimation procedure
   for (i in 1:6) {
