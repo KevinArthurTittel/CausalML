@@ -68,7 +68,11 @@ library(haven)
                                         "Human capital", "Money for relending", "Savings", "Food and durable consumption", "New businesses")
   resultsTable1OriginalPaper[1,] <- c("Dependent variable", "CF", "Cluster-robust CF", "LLCF")
 
+# Initialize parameters
+  numtrees <- 2000
+
 # Estimation procedure
+run_method =   
   for (i in 1:12) {
     Y <- Grace_Period_Data[,(37+i)]
     Y <- as.vector(Y)
@@ -78,21 +82,21 @@ library(haven)
     ###########################
     
       # Grow preliminary forests for (W, X) and (Y, X) separately
-        forest.W <- regression_forest(X, W, tune.parameters = "all")
+        forest.W <- regression_forest(X, W, num.trees = numtrees, tune.parameters = "all")
         W.hat <- predict(forest.W)$predictions
-        forest.Y <- regression_forest(X, Y, tune.parameters = "all")
+        forest.Y <- regression_forest(X, Y, num.trees = numtrees, tune.parameters = "all")
         Y.hat <- predict(forest.Y)$predictions
 
       # Compute the variable importance
         GRF.varimp <- variable_importance(forest.Y) 
     
       # Select variables to include using preliminary GRF
-        prelim.GRF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, num.trees = 2000)
+        prelim.GRF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees)
         prelim.GRF.varimp <- variable_importance(prelim.GRF)
         selected.vars <- which(prelim.GRF.varimp / mean(prelim.GRF.varimp) > 0.2)
 
       # Implement GRF
-        GRF <- causal_forest(X[,selected.vars], Y, W, Y.hat = Y.hat, W.hat = W.hat, num.trees = 2000, tune.parameters = "all")
+        GRF <- causal_forest(X[,selected.vars], Y, W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees, tune.parameters = "all")
         GRF.pred <- predict(GRF, estimate.variance = TRUE)
         GRF.CATE <- GRF.pred$predictions
         GRF.CATE.SE <- sqrt(GRF.pred$variance.estimates)
@@ -131,7 +135,7 @@ library(haven)
     ############################
     
       # Select variables to include using preliminary Cluster-Robust GRF
-        prelim.CR.GRF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, clusters = loangroups, num.trees = 2000)
+        prelim.CR.GRF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, clusters = loangroups, num.trees = numtrees)
         prelim.CR.GRF.varimp <- variable_importance(prelim.CR.GRF)
         selected.vars <- which(prelim.CR.GRF.varimp / mean(prelim.CR.GRF.varimp) > 0.2)
 
@@ -139,7 +143,7 @@ library(haven)
         CR.GRF.varimp <- variable_importance(forest.Y) 
               
       # Implement Cluster-Robust GRF
-        CR.GRF <- causal_forest(X[,selected.vars], Y, W, Y.hat = Y.hat, W.hat = W.hat, clusters = loangroups, num.trees = 8000, tune.parameters = "all")
+        CR.GRF <- causal_forest(X[,selected.vars], Y, W, Y.hat = Y.hat, W.hat = W.hat, clusters = loangroups, num.trees = numtrees, tune.parameters = "all")
         CR.GRF.pred <- predict(CR.GRF, estimate.variance = TRUE)
         CR.GRF.CATE <- CR.GRF.pred$predictions
         CR.GRF.CATE.SE <- sqrt(CR.GRF.pred$variance.estimates)
@@ -182,9 +186,9 @@ library(haven)
     ############################
     
        # Grow preliminary forests for (W, X) and (Y, X) separately
-        forest.W <- ll_regression_forest(X, W, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, num.trees = 2000, tune.parameters = "all")
+        forest.W <- ll_regression_forest(X, W, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, num.trees = numtrees, tune.parameters = "all")
         W.hat <- predict(forest.W)$predictions
-        forest.Y <- ll_regression_forest(X, Y, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, num.trees = 2000, tune.parameters = "all")
+        forest.Y <- ll_regression_forest(X, Y, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, num.trees = numtrees, tune.parameters = "all")
         Y.hat <- predict(forest.Y)$predictions
   
       # Compute the variable importance
@@ -200,8 +204,8 @@ library(haven)
         }
   
       # Implement LLCF
-        LLCF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE,
-                              num.trees = 2000, tune.parameters = "all")
+        LLCF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE, enable.ll.split = TRUE, 
+                              ll.split.weight.penalty = TRUE, num.trees = numtrees, tune.parameters = "all")
         LLCF.ATE <- average_treatment_effect(LLCF, target.sample = "all")
     
       # Predict: tuning without grid search over lambdas
