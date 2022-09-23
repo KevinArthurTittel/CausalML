@@ -73,66 +73,94 @@ library(haven)
     Y <- Grace_Period_Data[,(37+i)]
     Y <- as.vector(Y)
   
-    # Causal Forest estimation:
+    ###########################
+    ########### GRF ###########
+    ###########################
+    
       # Grow preliminary forests for (W, X) and (Y, X) separately
-        forest.W <- regression_forest(X, W)
+        forest.W <- regression_forest(X, W, tune.parameters = "all")
         W.hat <- predict(forest.W)$predictions
-        forest.Y <- regression_forest(X, Y)
+        forest.Y <- regression_forest(X, Y, tune.parameters = "all")
         Y.hat <- predict(forest.Y)$predictions
 
-      # Select variables to include using preliminary CF
-        prelim.CF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, 
-                              num.trees = 4000)
-        prelim.CF.varimp <- variable_importance(prelim.CF)
-        selected.vars <- which(prelim.CF.varimp / mean(prelim.CF.varimp) > 0.2)
+      # Compute the variable importance
+        GRF.varimp <- variable_importance(forest.Y) 
+    
+      # Select variables to include using preliminary GRF
+        prelim.GRF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, num.trees = 2000)
+        prelim.GRF.varimp <- variable_importance(prelim.GRF)
+        selected.vars <- which(prelim.GRF.varimp / mean(prelim.GRF.varimp) > 0.2)
 
-      # Implement CF
-        CF <- causal_forest(X[,selected.vars], Y, W, Y.hat = Y.hat, W.hat = W.hat,
-                       num.trees = 8000, tune.parameters = "all")
-        tauhat <- predict(CF)$predictions
+      # Implement GRF
+        GRF <- causal_forest(X[,selected.vars], Y, W, Y.hat = Y.hat, W.hat = W.hat, num.trees = 2000, tune.parameters = "all")
+        GRF.pred <- predict(GRF, estimate.variance = TRUE)
+        GRF.CATE <- GRF.pred$predictions
+        GRF.CATE.SE <- sqrt(GRF.pred$variance.estimates)
   
-      # Graph the predicted CF heterogeneous treatment effect estimates
-        hist(tauhat)
+      # Find lower and upper bounds for 95% confidence intervals
+        lower.GRF <- GRF.CATE - 1.96*GRF.CATE.SE
+        upper.GRF <- GRF.CATE + 1.96*GRF.CATE.SE
+    
+      # Graph the predicted GRF heterogeneous treatment effect estimates
+        hist(GRF.CATE)
 
-      # Compute CATE with corresponding 95% confidence intervals
-        CATE <- average_treatment_effect(CF, target.sample = "all")
-        resultsTable1OriginalPaper[(i+1),2] <- paste(round(CATE[1], 3), "(", round(CATE[2], 3), ")")
-        # results[i,2] <- paste("[", (round(CATE[1], 3) - (round(qnorm(0.975) * CATE[2], 3))), ",",  
-          #                    round(CATE[1], 3) + (round(qnorm(0.975) * CATE[2], 3)), "]")
-        # paste("95% CI for the CATE:", (round(CATE.CR[1], 3) - (round(qnorm(0.975) * CATE.CR[2], 3))),
-        # round(CATE.CR[1], 3) + (round(qnorm(0.975) * CATE.CR[2], 3)))
+      # Compute ATE with corresponding 95% confidence intervals
+        GRF.ATE <- average_treatment_effect(GRF, target.sample = "all")
+        resultsTable1OriginalPaper[(i+1),2] <- paste(round(GRF.ATE[1], 3), "(", round(GRF.ATE[2], 3), ")")
+    
+      # See if the GRF succeeded in capturing heterogeneity by plotting the TOC and calculating the 95% confidence interval for the AUTOC
+        GRF.rate <- rank_average_treatment_effect(GRF, GRF.CATE)
+        plot(GRF.rate)
+        paste("AUTOC:", round(GRF.rate$estimate, 2), "+/", round(1.96 * GRF.rate$std.err, 2)
   
-    # Cluster-Robust Causal Forest estimation:
-      # Select variables to include using preliminary Cluster-Robust CF
-        prelim.CF.CR <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, clusters = loangroups, 
+    ############################
+    #### Cluster-Robust GRF ####
+    ############################
+    
+      # Select variables to include using preliminary Cluster-Robust GRF
+        prelim.CR.GRF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, clusters = loangroups, 
                            num.trees = 4000)
-        prelim.CF.CR.varimp <- variable_importance(prelim.CF.CR)
-        selected.vars <- which(prelim.CF.CR.varimp / mean(prelim.CF.CR.varimp) > 0.2)
+        prelim.CR.GRF.varimp <- variable_importance(prelim.CR.GRF)
+        selected.vars <- which(prelim.CR.GRF.varimp / mean(prelim.CR.GRF.varimp) > 0.2)
 
-      # Implement Cluster-Robust CF
-        CF.CR <- causal_forest(X[,selected.vars], Y, W, Y.hat = Y.hat, W.hat = W.hat,
-                    clusters = loangroups, 
-                    num.trees = 8000, tune.parameters = "all")
-        tauhat <- predict(CF.CR)$predictions
+      # Compute the variable importance
+        CR.GRF.varimp <- variable_importance(forest.Y) 
+              
+      # Implement Cluster-Robust GRF
+        CR.GRF <- causal_forest(X[,selected.vars], Y, W, Y.hat = Y.hat, W.hat = W.hat, clusters = loangroups, num.trees = 8000, tune.parameters = "all")
+        CR.GRF.pred <- predict(CR.GRF, estimate.variance = TRUE)
+        CR.GRF.CATE <- CR.GRF.pred$predictions
+        CR.GRF.CATE.SE <- sqrt(CR.GRF.pred$variance.estimates)
     
-      # Graph the predicted Cluster-Robust CF heterogeneous treatment effect estimates
-        hist(tauhat)
+      # Find lower and upper bounds for 95% confidence intervals
+        lower.CR.GRF <- CR.GRF.CATE - 1.96*CR.GRF.CATE.SE
+        upper.CR.GRF <- CR.GRF.CATE + 1.96*CR.GRF.CATE.SE
+              
+      # Graph the predicted Cluster-Robust GRF heterogeneous treatment effect estimates
+        hist(CR.GRF.CATE)
     
-      # Compute CATE with corresponding 95% confidence intervals
-        CATE.CR <- average_treatment_effect(CF.CR, target.sample = "all")
-        resultsTable1OriginalPaper[(i+1),3] <- paste(round(CATE.CR[1], 3), "(", round(CATE.CR[2], 3), ")")
-        # results[i,4] <- paste("[", (round(CATE.CR[1], 3) - (round(qnorm(0.975) * CATE.CR[2], 3))), ",",  
-          #                   round(CATE.CR[1], 3) + (round(qnorm(0.975) * CATE.CR[2], 3)), "]")
-        #paste("95% CI for the CATE:", (round(CATE.CR[1], 3) - (round(qnorm(0.975) * CATE.CR[2], 3))),
-                                                   #round(CATE.CR[1], 3) + (round(qnorm(0.975) * CATE.CR[2], 3)))
+      # Compute ATE with corresponding 95% confidence intervals
+        CR.GRF.ATE <- average_treatment_effect(CR.GRF, target.sample = "all")
+        resultsTable1OriginalPaper[(i+1),3] <- paste(round(CR.GRF.ATE[1], 3), "(", round(CR.GRF.ATE[2], 3), ")")
+    
+      # See if the Cluster-Robust GRF succeeded in capturing heterogeneity by plotting the TOC and calculating the 95% confidence interval for the AUTOC
+        CR.GRF.rate <- rank_average_treatment_effect(CR.GRF, CR.GRF.CATE)
+        plot(CR.GRF.rate)
+        paste("AUTOC:", round(CR.GRF.rate$estimate, 2), "+/", round(1.96 * CR.GRF.rate$std.err, 2)
   
-    # Linear Local Causal Forest estimation:
+    ############################
+    ########### LLCF ###########
+    ############################
+    
        # Grow preliminary forests for (W, X) and (Y, X) separately
         forest.W <- ll_regression_forest(X, W, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, num.trees = 2000, tune.parameters = "all")
         W.hat <- predict(forest.W)$predictions
         forest.Y <- ll_regression_forest(X, Y, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, num.trees = 2000, tune.parameters = "all")
         Y.hat <- predict(forest.Y)$predictions
   
+      # Compute the variable importance
+        LLCF.varimp <- variable_importance(forest.Y) 
+              
       # Select variables to include using preliminary LLCF
         lasso.mod <- cv.glmnet(X, Y, alpha = 1)
         selected <- which(coef(lasso.mod) != 0)
@@ -145,23 +173,34 @@ library(haven)
       # Implement LLCF
         LLCF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE,
                               num.trees = 2000, tune.parameters = "all")
+        LLCF.ATE <- average_treatment_effect(LLCF, target.sample = "all")
+    
+      # Predict: tuning without grid search over lambdas
         LLCF.pred <- predict(LLCF, linear.correction.variables = selected, ll.weight.penalty = TRUE, estimate.variance = TRUE)
-        LLCF.ATE <- mean(LLCF.pred$predictions)
-        LLCF.ATE.SE <- mean((LLCF.pred$predictions - mean(LLCF.pred$predictions))^2)
+        LLCF.CATE <- LLCF.pred$predictions
+        LLCF.CATE.SE <- sqrt(LLCF.pred$variance.estimates)
   
       # Predict: tuning done using set of lambdas
-        llcf.mse.old <- +Inf
+        LLCF.mse.old <- +Inf
         for (l in length(lambdas)) {
-          llcf.pred.old <- predict(LLCF, linear.correction.variables = 1:ncol(X), ll.lambda = lambdas[l], ll.weight.penalty = TRUE, estimate.variance = TRUE)
-          predictions <- llcf.pred.old$predictions
-          llcf.mse.new <- mean((predictions - mean(predictions))**2)
-          if (llcf.mse.new < llcf.mse.old) {
-            llcf.mse.old <- llcf.mse.new
-            LLCF.CATE.SE <- sqrt(mean(llcf.pred.old$variance.estimates))
+          LLCF.CATE.old <- predict(LLCF, linear.correction.variables = selected, ll.lambda = lambdas[l], ll.weight.penalty = TRUE, estimate.variance = TRUE)
+          predictions <- LLCF.CATE.old$predictions
+          LLCF.mse.new <- mean((predictions - mean(predictions))**2)
+          if (LLCF.mse.new < LLCF.mse.old) {
+            LLCF.mse.old <- LLCF.mse.new
+            LLCF.CATE.SE <- sqrt(LLCF.CATE.old$variance.estimates))
             predictions.new <- predictions
           }
         }
-  
-        LLCF.ATE <- mean(predictions.new)
+       
+      # Find lower and upper bounds for 95% confidence intervals
+        lower.LLCF <- LLCF.CATE - 1.96*LLCF.CATE.SE
+        upper.LLCF <- LLCF.CATE + 1.96*LLCF.CATE.SE
+              
+      # See if the LLCF succeeded in capturing heterogeneity by plotting the TOC and calculating the 95% confidence interval for the AUTOC
+        LLCF.rate <- rank_average_treatment_effect(LLCF, LLCF.CATE)
+        plot(LLCF.rate)
+        paste("AUTOC:", round(LLCF.rate$estimate, 2), "+/", round(1.96 * LLCF.rate$std.err, 2)
+    
         resultsTable1OriginalPaper[(i+1),4] <- paste(LLCF.ATE, "(", LLCF.ATE.SE, ")")
 }
