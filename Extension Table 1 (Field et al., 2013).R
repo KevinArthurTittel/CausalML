@@ -64,10 +64,12 @@ library(haven)
 # Initialize parameters
   numtrees <- 2000
   index <- c(1:12)
-  boolean.plot <- TRUE
+  lambdas <- c(0, 0.1, 0.3, 0.5, 0.7, 1, 1.5)
+  boolean.lambdas <- FALSE
+  boolean.plot <- FALSE
 
 # Estimation procedure
-run_method = function(index, lambdas, boolean.plot) {
+run_method = function(index, lambdas, boolean.plot, boolean.lambdas) {
   basic.results = sapply(index, function(i) {
     Y <- Grace_Period_Data[,(37+i)]
     Y <- as.vector(Y)
@@ -207,23 +209,26 @@ run_method = function(index, lambdas, boolean.plot) {
                               ll.split.weight.penalty = TRUE, num.trees = numtrees, tune.parameters = "all")
         LLCF.ATE <- average_treatment_effect(LLCF, target.sample = "all")
     
-      # Predict: tuning without grid search over lambdas
-        LLCF.pred <- predict(LLCF, linear.correction.variables = selected, ll.weight.penalty = TRUE, estimate.variance = TRUE)
-        LLCF.CATE <- LLCF.pred$predictions
-        LLCF.CATE.SE <- sqrt(LLCF.pred$variance.estimates)
-  
-      # Predict: tuning done using set of lambdas
-        LLCF.mse.old <- +Inf
-        for (l in length(lambdas)) {
-          LLCF.CATE.old <- predict(LLCF, linear.correction.variables = selected, ll.lambda = lambdas[l], ll.weight.penalty = TRUE, estimate.variance = TRUE)
-          predictions <- LLCF.CATE.old$predictions
-          LLCF.mse.new <- mean((predictions - mean(predictions))**2)
-          if (LLCF.mse.new < LLCF.mse.old) {
-            LLCF.mse.old <- LLCF.mse.new
-            LLCF.CATE.SE <- sqrt(LLCF.CATE.old$variance.estimates))
-            predictions.new <- predictions
-          }
+        if (boolean.lambdas == FALSE) {
+          # Predict: tuning without grid search over lambdas
+            LLCF.pred <- predict(LLCF, linear.correction.variables = selected, ll.weight.penalty = TRUE, estimate.variance = TRUE)
+            LLCF.CATE <- LLCF.pred$predictions
+            LLCF.CATE.SE <- sqrt(LLCF.pred$variance.estimates)
         }
+  
+        if (boolean.lambdas == TRUE) {
+          # Predict: tuning done using set of lambdas
+            LLCF.mse.old <- +Inf
+            for (l in length(lambdas)) {
+              LLCF.CATE.old <- predict(LLCF, linear.correction.variables = selected, ll.lambda = lambdas[l], ll.weight.penalty = TRUE, estimate.variance = TRUE)
+              predictions <- LLCF.CATE.old$predictions
+              LLCF.mse.new <- mean((predictions - mean(predictions))**2)
+              if (LLCF.mse.new < LLCF.mse.old) {
+                LLCF.mse.old <- LLCF.mse.new
+                LLCF.CATE.SE <- sqrt(LLCF.CATE.old$variance.estimates))
+                predictions.new <- predictions
+              }
+            }
        
       # Find lower and upper bounds for 95% confidence intervals
         lower.LLCF <- LLCF.CATE - qnorm(0.975)*LLCF.CATE.SE
@@ -303,7 +308,7 @@ run_method = function(index, lambdas, boolean.plot) {
     return(results)
  }
 
-results = run_method(index, lambdas, boolean.plot)
+results = run_method(index, lambdas, boolean.plot, boolean.lambdas)
 results_table1 <- list('Sheet1' = results[["results_ATE"]], 'Sheet2' = results[["results_AUTOC"]], 
                        'Sheet3' = results[["results_BLP"]], 'Sheet4' = results[["results_DiffATE"]])
 write.xlsx(results_table1, file = "Table 1 (Field et al., 2013).xlsx")
