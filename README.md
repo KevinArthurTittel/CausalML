@@ -6,7 +6,7 @@ For the MSc Econometrics & Management Science, specializing in Business Analytic
 
 This folder contains replication files for my theoretical MSc thesis titled "Robust Smooth Heterogeneous Treatment Effect Estimation using Causal Machine Learning", as well as a general introduction for the reader. All selected settings for the algorithms here are described in my thesis. Contained in this folder are:
 
-- Extension Table 1 (Field et al., 2013).R: extends Table 1 of the original paper of Field et al. (2013) by applying GRF, Cluster-Robust GRF, and LLCF on the original analysis.
+- Extension Table 1 (Field et al., 2013).R: extends Table 1 of the original paper of Field et al. (2013) by applying GRF, Cluster-Robust GRF, and LLCF to estimate average and heterogeneous treatment effects of a grace period on twelve loan use and business formation outcome variables. In particular, four tables are produced with i) ATE estimates with corresponding SE, ii) confidence intervals on AUTOC, iii) BLP Approach estimates, and iv) Differential ATE approach estimates with corresponding SE.
 - Extension Table 2 (Field et al., 2013).R: extends Table 2 of the original paper of Field et al. (2013) by applying GRF, Cluster-Robust GRF, and LLCF on the original analysis.
 - Extension Table 3 (Field et al., 2013).R: extends Table 3 of the original paper of Field et al. (2013) by applying GRF, Cluster-Robust GRF, and LLCF on the original analysis.
 - Extension Table 4 (Field et al., 2013).R: extends Table 4 of the original paper of Field et al. (2013) by applying GRF, Cluster-Robust GRF, and LLCF on the original analysis.
