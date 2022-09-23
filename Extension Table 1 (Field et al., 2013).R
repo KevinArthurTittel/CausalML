@@ -134,13 +134,13 @@ library(haven)
         Y.hat <- predict(forest.Y)$predictions
   
       # Select variables to include using preliminary LLCF
-        # lasso.mod <- cv.glmnet(X, Y, alpha = 1)
-        # selected <- which(coef(lasso.mod) != 0)
-        # if(length(selected) < 2) {
-        #   selected <- 1:ncol(X)
-        # } else {
-        #   selected <- selected[-1] - 1 # Remove intercept
-        # }
+        lasso.mod <- cv.glmnet(X, Y, alpha = 1)
+        selected <- which(coef(lasso.mod) != 0)
+        if(length(selected) < 2) {
+          selected <- 1:ncol(X)
+        } else {
+          selected <- selected[-1] - 1 # Remove intercept
+        }
   
       # Implement LLCF
         LLCF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE, num.trees = 8000, tune.parameters = "all")
