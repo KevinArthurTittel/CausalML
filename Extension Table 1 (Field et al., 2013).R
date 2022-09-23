@@ -128,9 +128,9 @@ library(haven)
   
     # Linear Local Causal Forest estimation:
        # Grow preliminary forests for (W, X) and (Y, X) separately
-        forest.W <- ll_regression_forest(X, W, honesty = TRUE)
+        forest.W <- ll_regression_forest(X, W, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, num.trees = 2000, tune.parameters = "all")
         W.hat <- predict(forest.W)$predictions
-        forest.Y <- ll_regression_forest(X, Y, honesty = TRUE)
+        forest.Y <- ll_regression_forest(X, Y, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, num.trees = 2000, tune.parameters = "all")
         Y.hat <- predict(forest.Y)$predictions
   
       # Select variables to include using preliminary LLCF
@@ -143,10 +143,11 @@ library(haven)
         }
   
       # Implement LLCF
-        LLCF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE, num.trees = 8000, tune.parameters = "all")
-        # LLCF.pred <- predict(LLCF, linear.correction.variables = selected, ll.weight.penalty = TRUE, estimate.variance = TRUE)
-        # LLCF.CATE <- mean(LLCF.pred$predictions)
-        # LLCF.CATE.SE <- mean((LLCF.pred$predictions - mean(LLCF.pred$predictions))^2)
+        LLCF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE,
+                              num.trees = 2000, tune.parameters = "all")
+        LLCF.pred <- predict(LLCF, linear.correction.variables = selected, ll.weight.penalty = TRUE, estimate.variance = TRUE)
+        LLCF.ATE <- mean(LLCF.pred$predictions)
+        LLCF.ATE.SE <- mean((LLCF.pred$predictions - mean(LLCF.pred$predictions))^2)
   
       # Predict: tuning done using set of lambdas
         llcf.mse.old <- +Inf
@@ -161,6 +162,6 @@ library(haven)
           }
         }
   
-        LLCF.CATE <- mean(predictions.new)
-        resultsTable1OriginalPaper[(i+1),4] <- paste(LLCF.CATE, "(", LLCF.CATE.SE, ")")
+        LLCF.ATE <- mean(predictions.new)
+        resultsTable1OriginalPaper[(i+1),4] <- paste(LLCF.ATE, "(", LLCF.ATE.SE, ")")
 }
