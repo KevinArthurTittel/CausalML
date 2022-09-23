@@ -98,8 +98,8 @@ library(haven)
         GRF.CATE.SE <- sqrt(GRF.pred$variance.estimates)
   
       # Find lower and upper bounds for 95% confidence intervals
-        lower.GRF <- GRF.CATE - 1.96*GRF.CATE.SE
-        upper.GRF <- GRF.CATE + 1.96*GRF.CATE.SE
+        lower.GRF <- GRF.CATE - qnorm(0.975)*GRF.CATE.SE
+        upper.GRF <- GRF.CATE + qnorm(0.975)*GRF.CATE.SE
     
       # Graph the predicted GRF heterogeneous treatment effect estimates
         hist(GRF.CATE)
@@ -111,15 +111,27 @@ library(haven)
       # See if the GRF succeeded in capturing heterogeneity by plotting the TOC and calculating the 95% confidence interval for the AUTOC
         GRF.rate <- rank_average_treatment_effect(GRF, GRF.CATE, target = "AUTOC")
         plot(GRF.rate)
-        paste("AUTOC:", round(GRF.rate$estimate, 2), "+/", round(1.96 * GRF.rate$std.err, 2)
+        paste("AUTOC:", round(GRF.rate$estimate, 2), "+/", round(qnorm(0.975) * GRF.rate$std.err, 2)
+              
+      # Assessing GRF fit and heterogeneity using the Best Linear Predictor Approach [BLP]
+        GRF.BLP <- test_calibration(GRF)
+        mean.forest.pred.GRF <- c(GRF.BLP[1,1], GRF.BLP[1,2], (GRF.BLP[1,4] < 0.10))
+        diff.forest.pred.GRF <- c(GRF.BLP[2,1], GRF.BLP[2,2], (GRF.BLP[2,4] < 0.10))
+              
+      # Assessing GRF heterogeneity using Differential ATE Approach
+        GRF.high.effect <- (GRF.CATE > median(GRF.CATE))
+        GRF.ATE.high <- average_treatment_effect(GRF, subset = GRF.high.effect)
+        GRF.ATE.low <- average_treatment_effect(GRF, subset = !GRF.high.effect)
+        lower.DiffATE.GRF <- ((GRF.ATE.high[1] - GRF.ATE.low[1]) - (qnorm(0.975) * sqrt(GRF.ATE.high[2]^2 + GRF.ATE.low[2]^2)))
+        upper.DiffATE.GRF <- ((GRF.ATE.high[1] - GRF.ATE.low[1]) + (qnorm(0.975) * sqrt(GRF.ATE.high[2]^2 + GRF.ATE.low[2]^2)))
+              
   
     ############################
     #### Cluster-Robust GRF ####
     ############################
     
       # Select variables to include using preliminary Cluster-Robust GRF
-        prelim.CR.GRF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, clusters = loangroups, 
-                           num.trees = 4000)
+        prelim.CR.GRF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, clusters = loangroups, num.trees = 2000)
         prelim.CR.GRF.varimp <- variable_importance(prelim.CR.GRF)
         selected.vars <- which(prelim.CR.GRF.varimp / mean(prelim.CR.GRF.varimp) > 0.2)
 
@@ -133,8 +145,8 @@ library(haven)
         CR.GRF.CATE.SE <- sqrt(CR.GRF.pred$variance.estimates)
     
       # Find lower and upper bounds for 95% confidence intervals
-        lower.CR.GRF <- CR.GRF.CATE - 1.96*CR.GRF.CATE.SE
-        upper.CR.GRF <- CR.GRF.CATE + 1.96*CR.GRF.CATE.SE
+        lower.CR.GRF <- CR.GRF.CATE - qnorm(0.975)*CR.GRF.CATE.SE
+        upper.CR.GRF <- CR.GRF.CATE + qnorm(0.975)*CR.GRF.CATE.SE
               
       # Graph the predicted Cluster-Robust GRF heterogeneous treatment effect estimates
         hist(CR.GRF.CATE)
@@ -146,8 +158,25 @@ library(haven)
       # See if the Cluster-Robust GRF succeeded in capturing heterogeneity by plotting the TOC and calculating the 95% confidence interval for the AUTOC
         CR.GRF.rate <- rank_average_treatment_effect(CR.GRF, CR.GRF.CATE, target = "AUTOC")
         plot(CR.GRF.rate)
-        paste("AUTOC:", round(CR.GRF.rate$estimate, 2), "+/", round(1.96 * CR.GRF.rate$std.err, 2)
+        paste("AUTOC:", round(CR.GRF.rate$estimate, 2), "+/", round(qnorm(0.975) * CR.GRF.rate$std.err, 2)
   
+      # Assessing Cluster-Robust GRF fit using the Best Linear Predictor Approach [BLP]
+        CR.GRF.BLP <- test_calibration(CR.GRF)
+        mean.forest.pred.CR.GRF <- c(CR.GRF.BLP[1,1], CR.GRF.BLP[1,2], (CR.GRF.BLP[1,4] < 0.10))
+        diff.forest.pred.CR.GRF <- c(CR.GRF.BLP[2,1], CR.GRF.BLP[2,2], (CR.GRF.BLP[2,4] < 0.10))
+              
+      # Assessing Cluster-Robust GRF heterogeneity using Differential ATE Approach
+        CR.GRF.high.effect <- (CR.GRF.CATE > median(CR.GRF.CATE))
+        CR.GRF.ATE.high <- average_treatment_effect(CR.GRF, subset = CR.GRF.high.effect)
+        CR.GRF.ATE.low <- average_treatment_effect(CR.GRF, subset = !CR.GRF.high.effect)
+              
+      # Assessing Cluster-Robust GRF heterogeneity using Differential ATE Approach
+        CR.GRF.high.effect <- (CR.GRF.CATE > median(CR.GRF.CATE))
+        CR.GRF.ATE.high <- average_treatment_effect(CR.GRF, subset = CR.GRF.high.effect)
+        CR.GRF.ATE.low <- average_treatment_effect(CR.GRF, subset = !CR.GRF.high.effect)
+        lower.DiffATE.CR.GRF <- ((CR.GRF.ATE.high[1] - CR.GRF.ATE.low[1]) - (qnorm(0.975) * sqrt(CR.GRF.ATE.high[2]^2 + CR.GRF.ATE.low[2]^2)))
+        upper.DiffATE.CR.GRF <- ((CR.GRF.ATE.high[1] - CR.GRF.ATE.low[1]) + (qnorm(0.975) * sqrt(CR.GRF.ATE.high[2]^2 + CR.GRF.ATE.low[2]^2)))
+              
     ############################
     ########### LLCF ###########
     ############################
@@ -194,13 +223,30 @@ library(haven)
         }
        
       # Find lower and upper bounds for 95% confidence intervals
-        lower.LLCF <- LLCF.CATE - 1.96*LLCF.CATE.SE
-        upper.LLCF <- LLCF.CATE + 1.96*LLCF.CATE.SE
+        lower.LLCF <- LLCF.CATE - qnorm(0.975)*LLCF.CATE.SE
+        upper.LLCF <- LLCF.CATE + qnorm(0.975)*LLCF.CATE.SE
               
       # See if the LLCF succeeded in capturing heterogeneity by plotting the TOC and calculating the 95% confidence interval for the AUTOC
         LLCF.rate <- rank_average_treatment_effect(LLCF, LLCF.CATE, target = "AUTOC")
         plot(LLCF.rate)
-        paste("AUTOC:", round(LLCF.rate$estimate, 2), "+/", round(1.96 * LLCF.rate$std.err, 2)
+        paste("AUTOC:", round(LLCF.rate$estimate, 2), "+/", round(qnorm(0.975) * LLCF.rate$std.err, 2)
+              
+      # Assessing LLCF fit using the Best Linear Predictor Approach [BLP]
+        LLCF.BLP <- test_calibration(LLCF)
+        mean.forest.pred.LLCF <- c(LLCF.BLP[1,1], LLCF.BLP[1,2], (LLCF.BLP[1,4] < 0.10))
+        diff.forest.pred.LLCF <- c(LLCF.BLP[2,1], LLCF.BLP[2,2], (LLCF.BLP[2,4] < 0.10))
+              
+      # Assessing LLCF heterogeneity using Differential ATE Approach
+        LLCF.high.effect <- (LLCF.CATE > median(LLCF.CATE))
+        LLCF.ATE.high <- average_treatment_effect(LLCF, subset = LLCF.high.effect)
+        LLCF.ATE.low <- average_treatment_effect(CR.GRF, subset = !LLCF.high.effect)
+      
+      # Assessing LLCF heterogeneity using Differential ATE Approach
+        LLCF.high.effect <- (LLCF.CATE > median(LLCF.CATE))
+        LLCF.ATE.high <- average_treatment_effect(LLCF, subset = LLCF.high.effect)
+        LLCF.ATE.low <- average_treatment_effect(LLCF, subset = !LLCF.high.effect)
+        lower.DiffATE.LLCF <- ((LLCF.ATE.high[1] - LLCF.ATE.low[1]) - (qnorm(0.975) * sqrt(LLCF.ATE.high[2]^2 + LLCF.ATE.low[2]^2)))
+        upper.DiffATE.LLCF <- ((LLCF.ATE.high[1] - LLCF.ATE.low[1]) + (qnorm(0.975) * sqrt(LLCF.ATE.high[2]^2 + LLCF.ATE.low[2]^2)))
     
         resultsTable1OriginalPaper[(i+1),4] <- paste(LLCF.ATE, "(", LLCF.ATE.SE, ")")
 }
