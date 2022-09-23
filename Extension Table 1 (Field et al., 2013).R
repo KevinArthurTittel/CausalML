@@ -61,13 +61,6 @@ library(haven)
     X <- as.matrix(cbind(X, loansizematrix))
     # X[X == "NA"] <- 0 # Set all missing values to 0 as done in original paper
 
-# Initialize results matrix
-  resultsTable1OriginalPaper <- matrix(data = 0, nrow = 13, ncol = 4)
-  resultsTable1OriginalPaper[2:13,1] <- c("Total business spending", "Inventory and raw materials", "Business equipment",
-                                        "Operating costs", "Total non-business spending", "Home repairs", "Utilities, taxes and rent",
-                                        "Human capital", "Money for relending", "Savings", "Food and durable consumption", "New businesses")
-  resultsTable1OriginalPaper[1,] <- c("Dependent variable", "CF", "Cluster-robust CF", "LLCF")
-
 # Initialize parameters
   numtrees <- 2000
   index <- c(1:12)
@@ -264,33 +257,53 @@ run_method = function(index, lambdas, boolean.plot) {
         results_ATE <- data.frame(t(c(paste(round(GRF.ATE[1], 3), "(", round(GRF.ATE[2], 3), ")"), 
                          paste(round(CR.GRF.ATE[1], 3), "(", round(CR.GRF.ATE[2], 3), ")"),
                          paste(round(LLCF.ATE[1], 3), "(", round(LLCF.ATE[2], 3), ")"))))
-        colnames(results_ATE) <- c("ATE GRF", "ATE CR.GRF", "ATE LLCF")
     
         results_AUTOC <- data.frame(t(c(paste(round(GRF.rate$estimate, 2), "+/", round(qnorm(0.975) * GRF.rate$std.err, 2),
                            paste(round(CR.GRF.rate$estimate, 2), "+/", round(qnorm(0.975) * CR.GRF.rate$std.err, 2),
                            paste(round(LLCF.rate$estimate, 2), "+/", round(qnorm(0.975) * LLCF.rate$std.err, 2))))
-        colnames(results_AUTOC) <- c("GRF", "CR.GRF", "LLCF")
                                         
         results_BLP <- data.frame(t(c(mean.forest.pred.GRF, diff.forest.pred.GRF, 
                          mean.forest.pred.CR.GRF, diff.forest.pred.CR.GRF, 
                          mean.forest.pred.LLCF, diff.forest.pred.LLCF)))
-        colnames(results_BLP) <- c("BLP[1] GRF", "BLP[2] GRF", "BLP[1] CR.GRF", "BLP[2] CR.GRF", "BLP[1] LLCF", "BLP[2] LLCF")
                                         
         results_DiffATE <- data.frame(t(c(paste(round(DiffATE.GRF.mean, 3), "(", round(DiffATE.GRF.SE, 3), ")"),
                              paste(round(DiffATE.CR.GRF.mean, 3), "(", round(DiffATE.CR.GRF.SE, 3), ")"),
-                             paste(round(DiffATE.LLCF.mean, 3), "(", round(DiffATE.LLCF.SE, 3), ")"))))
-        colnames(results_DiffATE) <- c("Differential ATE GRF", "Differential ATE CR.GRF", "Differential ATE LLCF")                                
+                             paste(round(DiffATE.LLCF.mean, 3), "(", round(DiffATE.LLCF.SE, 3), ")"))))                                
         
         data.frame(cbind(results_ATE, results_AUTOC, results_BLP, results_DiffATE)
     })
-    basic.results = list("results_ATE" = basic.results[,1:3], 
-                         "results_AUTOC" = basic.results[,4:6], 
-                         "results_BLP" = basic.results[,7:12], 
-                         "results_DiffATE" = basic.results[,13:15])                              
-    return(basic.results)
+    results_ATE <- basic.results[,1:3]
+    colnames(results_ATE) <- c("ATE GRF", "ATE CR.GRF", "ATE LLCF")    
+    rownames(results_ATE) <- c("Total business spending", "Inventory and raw materials", "Business equipment",
+                                        "Operating costs", "Total non-business spending", "Home repairs", "Utilities, taxes and rent",
+                                        "Human capital", "Money for relending", "Savings", "Food and durable consumption", "New businesses")
+                                        
+    results_AUTOC <- basic.results[,4:6]                                    
+    colnames(results_AUTOC) <- c("AUTOC GRF", "AUTOC CR.GRF", "AUTOC LLCF")    
+    rownames(results_AUTOC) <- c("Total business spending", "Inventory and raw materials", "Business equipment",
+                                        "Operating costs", "Total non-business spending", "Home repairs", "Utilities, taxes and rent",
+                                        "Human capital", "Money for relending", "Savings", "Food and durable consumption", "New businesses")
+    
+    results_BLP <- basic.results[,7:12]        
+    colnames(results_BLP) <- c("BLP[1] GRF", "BLP[2] GRF", "BLP[1] CR.GRF", "BLP[2] CR.GRF", "BLP[1] LLCF", "BLP[2] LLCF")
+    rownames(results_BLP) <- c("Total business spending", "Inventory and raw materials", "Business equipment",
+                                        "Operating costs", "Total non-business spending", "Home repairs", "Utilities, taxes and rent",
+                                        "Human capital", "Money for relending", "Savings", "Food and durable consumption", "New businesses")
+                                        
+    results_DiffATE <- basic.results[,13:15]                                    
+    colnames(results_DiffATE) <- c("Differential ATE GRF", "Differential ATE CR.GRF", "Differential ATE LLCF")
+    rownames(results_DiffATE) <- c("Total business spending", "Inventory and raw materials", "Business equipment",
+                                        "Operating costs", "Total non-business spending", "Home repairs", "Utilities, taxes and rent",
+                                        "Human capital", "Money for relending", "Savings", "Food and durable consumption", "New businesses")                                    
+                                                                            
+    results = list("results_ATE" = results_ATE, 
+                         "results_AUTOC" = results_AUTOC, 
+                         "results_BLP" = results_BLP, 
+                         "results_DiffATE" = results_DiffATE)                              
+    return(results)
  }
 
 results = run_method(index, lambdas, boolean.plot)
 results_table1 <- list('Sheet1' = results[["results_ATE"]], 'Sheet2' = results[["results_AUTOC"]], 
                        'Sheet3' = results[["results_BLP"]], 'Sheet4' = results[["results_DiffATE"]])
-write.xlsx(results_table1, file = "Table 1 (Field et al., 2013).xlsx", )
+write.xlsx(results_table1, file = "Table 1 (Field et al., 2013).xlsx")
