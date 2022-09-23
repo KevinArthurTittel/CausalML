@@ -214,9 +214,7 @@ run_method = function(index, lambdas, boolean.plot, boolean.lambdas) {
             LLCF.pred <- predict(LLCF, linear.correction.variables = selected, ll.weight.penalty = TRUE, estimate.variance = TRUE)
             LLCF.CATE <- LLCF.pred$predictions
             LLCF.CATE.SE <- sqrt(LLCF.pred$variance.estimates)
-        }
-  
-        if (boolean.lambdas == TRUE) {
+        } else {
           # Predict: tuning done using set of lambdas
             LLCF.mse.old <- +Inf
             for (l in length(lambdas)) {
