@@ -148,19 +148,19 @@ library(haven)
         # LLCF.CATE <- mean(LLCF.pred$predictions)
         # LLCF.CATE.SE <- mean((LLCF.pred$predictions - mean(LLCF.pred$predictions))^2)
   
-    # Predict: tuning done using set of lambdas
-      llcf.mse.old <- +Inf
-      for (l in length(lambdas)) {
-        llcf.pred.old <- predict(LLCF, linear.correction.variables = 1:ncol(X), ll.lambda = lambdas[l], ll.weight.penalty = TRUE, estimate.variance = TRUE)
-        predictions <- llcf.pred.old$predictions
-        llcf.mse.new <- mean((predictions - mean(predictions))**2)
-        if (llcf.mse.new < llcf.mse.old) {
-          llcf.mse.old <- llcf.mse.new
-          LLCF.CATE.SE <- sqrt(mean(llcf.pred.old$variance.estimates))
-          predictions.new <- predictions
+      # Predict: tuning done using set of lambdas
+        llcf.mse.old <- +Inf
+        for (l in length(lambdas)) {
+          llcf.pred.old <- predict(LLCF, linear.correction.variables = 1:ncol(X), ll.lambda = lambdas[l], ll.weight.penalty = TRUE, estimate.variance = TRUE)
+          predictions <- llcf.pred.old$predictions
+          llcf.mse.new <- mean((predictions - mean(predictions))**2)
+          if (llcf.mse.new < llcf.mse.old) {
+            llcf.mse.old <- llcf.mse.new
+            LLCF.CATE.SE <- sqrt(mean(llcf.pred.old$variance.estimates))
+            predictions.new <- predictions
+          }
         }
-      }
   
-    LLCF.CATE <- mean(predictions.new)
-  resultsTable1OriginalPaper[(i+1),4] <- paste(LLCF.CATE, "(", LLCF.CATE.SE, ")")
+        LLCF.CATE <- mean(predictions.new)
+    resultsTable1OriginalPaper[(i+1),4] <- paste(LLCF.CATE, "(", LLCF.CATE.SE, ")")
 }
