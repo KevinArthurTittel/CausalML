@@ -109,7 +109,7 @@ library(haven)
         resultsTable1OriginalPaper[(i+1),2] <- paste(round(GRF.ATE[1], 3), "(", round(GRF.ATE[2], 3), ")")
     
       # See if the GRF succeeded in capturing heterogeneity by plotting the TOC and calculating the 95% confidence interval for the AUTOC
-        GRF.rate <- rank_average_treatment_effect(GRF, GRF.CATE)
+        GRF.rate <- rank_average_treatment_effect(GRF, GRF.CATE, target = "AUTOC")
         plot(GRF.rate)
         paste("AUTOC:", round(GRF.rate$estimate, 2), "+/", round(1.96 * GRF.rate$std.err, 2)
   
@@ -144,7 +144,7 @@ library(haven)
         resultsTable1OriginalPaper[(i+1),3] <- paste(round(CR.GRF.ATE[1], 3), "(", round(CR.GRF.ATE[2], 3), ")")
     
       # See if the Cluster-Robust GRF succeeded in capturing heterogeneity by plotting the TOC and calculating the 95% confidence interval for the AUTOC
-        CR.GRF.rate <- rank_average_treatment_effect(CR.GRF, CR.GRF.CATE)
+        CR.GRF.rate <- rank_average_treatment_effect(CR.GRF, CR.GRF.CATE, target = "AUTOC")
         plot(CR.GRF.rate)
         paste("AUTOC:", round(CR.GRF.rate$estimate, 2), "+/", round(1.96 * CR.GRF.rate$std.err, 2)
   
@@ -198,7 +198,7 @@ library(haven)
         upper.LLCF <- LLCF.CATE + 1.96*LLCF.CATE.SE
               
       # See if the LLCF succeeded in capturing heterogeneity by plotting the TOC and calculating the 95% confidence interval for the AUTOC
-        LLCF.rate <- rank_average_treatment_effect(LLCF, LLCF.CATE)
+        LLCF.rate <- rank_average_treatment_effect(LLCF, LLCF.CATE, target = "AUTOC")
         plot(LLCF.rate)
         paste("AUTOC:", round(LLCF.rate$estimate, 2), "+/", round(1.96 * LLCF.rate$std.err, 2)
     
