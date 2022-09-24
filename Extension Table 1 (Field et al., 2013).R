@@ -69,7 +69,7 @@ library(haven)
   boolean.plot <- FALSE
 
 # Estimation procedure
-run_method = function(index, lambdas, boolean.plot, boolean.lambdas) {
+run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
   basic.results = sapply(index, function(i) {
     Y <- Grace_Period_Data[,(37+i)]
     Y <- as.vector(Y)
@@ -160,7 +160,6 @@ run_method = function(index, lambdas, boolean.plot, boolean.lambdas) {
     
       # Compute ATE with corresponding 95% confidence intervals
         CR.GRF.ATE <- average_treatment_effect(CR.GRF, target.sample = "all")
-        resultsTable1OriginalPaper[(i+1),3] <- paste(round(CR.GRF.ATE[1], 3), "(", round(CR.GRF.ATE[2], 3), ")")
     
       # See if the Cluster-Robust GRF succeeded in capturing heterogeneity by plotting the TOC and calculating the 95% confidence interval for the AUTOC
         CR.GRF.rate <- rank_average_treatment_effect(CR.GRF, CR.GRF.CATE, target = "AUTOC")
@@ -195,7 +194,7 @@ run_method = function(index, lambdas, boolean.plot, boolean.lambdas) {
       # Compute the variable importance
         LLCF.varimp <- variable_importance(forest.Y) 
               
-      # Select variables to include using preliminary LLCF
+      # Select variables to include using Lasso feature selection
         lasso.mod <- cv.glmnet(X, Y, alpha = 1)
         selected <- which(coef(lasso.mod) != 0)
         if(length(selected) < 2) {
@@ -227,6 +226,8 @@ run_method = function(index, lambdas, boolean.plot, boolean.lambdas) {
                 predictions.new <- predictions
               }
             }
+            LLCF.CATE <- predictions.new
+        }
        
       # Find lower and upper bounds for 95% confidence intervals
         lower.LLCF <- LLCF.CATE - qnorm(0.975)*LLCF.CATE.SE
@@ -261,9 +262,9 @@ run_method = function(index, lambdas, boolean.plot, boolean.lambdas) {
                          paste(round(CR.GRF.ATE[1], 3), "(", round(CR.GRF.ATE[2], 3), ")"),
                          paste(round(LLCF.ATE[1], 3), "(", round(LLCF.ATE[2], 3), ")"))))
     
-        results_AUTOC <- data.frame(t(c(paste(round(GRF.rate$estimate, 2), "+/", round(qnorm(0.975) * GRF.rate$std.err, 2),
-                           paste(round(CR.GRF.rate$estimate, 2), "+/", round(qnorm(0.975) * CR.GRF.rate$std.err, 2),
-                           paste(round(LLCF.rate$estimate, 2), "+/", round(qnorm(0.975) * LLCF.rate$std.err, 2))))
+        results_AUTOC <- data.frame(t(c(paste(round(GRF.rate$estimate, 3), "(", round(GRF.rate$std.err, 3), ")"),
+                           paste(round(CR.GRF.rate$estimate, 3), "(", round(CR.GRF.rate$std.err, 3), ")"),
+                           paste(round(LLCF.rate$estimate, 3), "(", round(LLCF.rate$std.err, 3), ")"),
                                         
         results_BLP <- data.frame(t(c(mean.forest.pred.GRF, diff.forest.pred.GRF, 
                          mean.forest.pred.CR.GRF, diff.forest.pred.CR.GRF, 
@@ -306,7 +307,7 @@ run_method = function(index, lambdas, boolean.plot, boolean.lambdas) {
     return(results)
  }
 
-results = run_method(index, lambdas, boolean.plot, boolean.lambdas)
+results = run_method(numtrees, index, lambdas, boolean.plot, boolean.lambdas)
 results_table1 <- list('Sheet1' = results[["results_ATE"]], 'Sheet2' = results[["results_AUTOC"]], 
                        'Sheet3' = results[["results_BLP"]], 'Sheet4' = results[["results_DiffATE"]])
 write.xlsx(results_table1, file = "Table 1 (Field et al., 2013).xlsx")
