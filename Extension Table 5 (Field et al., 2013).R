@@ -59,7 +59,6 @@ library(haven)
   # Combine all the control covariates in one large matrix
     # X <- as.matrix(cbind(X, stratifmatrix, loansizematrix, loanofficermatrix))
     X <- as.matrix(cbind(X, loansizematrix))
-    # X[X == "NA"] <- 0 # Set all missing values to 0 as done in original paper
  
 # Initialize results matrix
   resultsTable5OriginalPaper <- matrix(data = 0, nrow = 5, ncol = 6)
@@ -67,12 +66,20 @@ library(haven)
                    "impatient"))
   resultsTable5OriginalPaper[2:5,1] <- c("CF", "Cluster-robust CF", "LLCF", "observations")
 
-lambdas = c(0, 0.1, 0.3, 0.5, 0.7, 1, 1.5)
+# Initialize parameters
+  numtrees <- 2000
+  index <- c(1:6)
+  dep.var <- 50 # 50 = monhtly profit, 51 = log of monthly HH income, 52 = capital
+  lambdas <- c(0, 0.1, 0.3, 0.5, 0.7, 1, 1.5)
+  boolean.lambdas <- FALSE
+  boolean.plot <- FALSE
+  set.seed(123)
 
 # Estimation procedure
-  for (i in 1:6) {
-  Y <- Grace_Period_Data[,(50)]
-  Y <- as.vector(Y)
+run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
+  basic.results = sapply(index, function(i) {
+    Y <- Grace_Period_Data[,(dep.var)]
+    Y <- as.vector(Y)
   
     # Appoint characteristic for Table 5 (Field et al., 2013)
       characteristics <- Grace_Period_Data[,(74+i)]
@@ -91,99 +98,192 @@ lambdas = c(0, 0.1, 0.3, 0.5, 0.7, 1, 1.5)
       characteristics <- characteristics[!missingvalues]
       Y <- Y[!missingvalues]
   
-    # Causal Forest estimation:
+    ###########################
+    ########### GRF ###########
+    ###########################
+    
       # Grow preliminary forests for (W, X) and (Y, X) separately
-        forest.W <- regression_forest(X, W)
+        forest.W <- regression_forest(X, W, num.trees = numtrees, honesty = TRUE, tune.parameters = "all")
         W.hat <- predict(forest.W)$predictions
-        forest.Y <- regression_forest(X, Y)
+        forest.Y <- regression_forest(X, Y, num.trees = numtrees, honesty = TRUE, tune.parameters = "all")
         Y.hat <- predict(forest.Y)$predictions
         
-      # Select variables to include using preliminary CF
-        prelim.CF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, 
-                             num.trees = 4000)
-        prelim.CF.varimp <- variable_importance(prelim.CF)
-        selected.vars <- which(prelim.CF.varimp / mean(prelim.CF.varimp) > 0.2)
+      # Compute the variable importance
+        GRF.varimp <- variable_importance(forest.Y) 
+    
+      # Select variables to include using preliminary GRF
+        prelim.GRF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees, honesty = TRUE)
+        prelim.GRF.varimp <- variable_importance(prelim.GRF)
+        selected.vars <- which(prelim.GRF.varimp / mean(prelim.GRF.varimp) > 0.2)
   
-      # Implement CF
-        CF <- causal_forest(X[,selected.vars], Y, W, Y.hat = Y.hat, W.hat = W.hat,
-                      num.trees = 8000, tune.parameters = "all")
-        tauhat <- predict(CF)$predictions
+      # Implement GRF
+        GRF <- causal_forest(X[,selected.vars], Y, W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees, 
+                             honesty = TRUE, tune.parameters = c("sample.fraction", "mtry", "min.node.size", "honesty.fraction"))
+        GRF.pred <- predict(GRF, estimate.variance = TRUE)
+        GRF.CATE <- GRF.pred$predictions
+        GRF.CATE.SE <- sqrt(GRF.pred$variance.estimates)
   
-      # Graph the predicted CF heterogeneous treatment effect estimates 
-        hist(tauhat)
+      # Find lower and upper bounds for 95% confidence intervals
+        lower.GRF <- GRF.CATE - qnorm(0.975)*GRF.CATE.SE
+        upper.GRF <- GRF.CATE + qnorm(0.975)*GRF.CATE.SE
+    
+      # Graph the predicted GRF heterogeneous treatment effect estimates
+        if (boolean.plot == TRUE) {
+          hist(GRF.CATE)
+        }
+    
+      # Compute ATE with corresponding 95% confidence intervals
+        GRF.ATE <- average_treatment_effect(GRF, target.sample = "all")
+    
+      # See if the GRF succeeded in capturing heterogeneity by plotting the TOC and calculating the 95% confidence interval for the AUTOC
+        GRF.rate <- rank_average_treatment_effect(GRF, GRF.CATE, target = "AUTOC")
+        if (boolean.plot == TRUE) {
+          plot(GRF.rate)
+        }
 
+      # Assessing GRF fit and heterogeneity using the Best Linear Predictor Approach [BLP]
+        GRF.BLP <- test_calibration(GRF)
+        mean.forest.pred.GRF <- c(GRF.BLP[1,1], GRF.BLP[1,2], (GRF.BLP[1,4] < 0.10))
+        diff.forest.pred.GRF <- c(GRF.BLP[2,1], GRF.BLP[2,2], (GRF.BLP[2,4] < 0.10))
+    
       # Test of heterogeneity using Differential ATE
-        ate.subgroup <- average_treatment_effect(CF, target.sample = "all", subset = (characteristics == 1))
-        ate.rest <- average_treatment_effect(CF, target.sample = "all", subset = !(characteristics == 1))
-        resultsTable5OriginalPaper[2,(i+1)] <- paste(round(ate.subgroup[1] - ate.rest[1], 3), "(", sqrt(ate.subgroup[2]^2 + ate.rest[2]^2), ")")
+        GRF.ATE.charact <- average_treatment_effect(GRF, target.sample = "all", subset = (characteristics == 1))
+        GRF.ATE.not.charact <- average_treatment_effect(GRF, target.sample = "all", subset = !(characteristics == 1))
+        DiffATE.GRF.mean <- GRF.ATE.charact[1] - GRF.ATE.not.charact[1]
+        DiffATE.GRF.SE <- sqrt(GRF.ATE.charact[2]^2 + GRF.ATE.not.charact[2]^2)
+        lower.DiffATE.GRF <- (DiffATE.GRF.mean - (qnorm(0.975) * DiffATE.GRF.SE))
+        upper.DiffATE.GRF <- (DiffATE.GRF.mean + (qnorm(0.975) * DiffATE.GRF.SE))
   
-      # Test of heterogeneity using Best Linear Predictor Analysis
-        # results[(i+1),5] <- test_calibration(CF)[1]
-        # results[(i+1),6] <- test_calibration(CF)[2]
+    ############################
+    #### Cluster-Robust GRF ####
+    ############################
+      
+      # Select variables to include using preliminary Cluster-Robust GRF
+        prelim.CR.GRF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE, clusters = loangroups, num.trees = numtrees)
+        prelim.CR.GRF.varimp <- variable_importance(prelim.CR.GRF)
+        selected.vars <- which(prelim.CR.GRF.varimp / mean(prelim.CR.GRF.varimp) > 0.2)
   
-    # Cluster-Robust Causal Forest estimation: 
-       # Select variables to include using preliminary Cluster-Robust CF
-        prelim.CF.CR <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, clusters = loangroups, 
-                                num.trees = 4000)
-        prelim.CF.CR.varimp <- variable_importance(prelim.CF.CR)
-        selected.vars <- which(prelim.CF.CR.varimp / mean(prelim.CF.CR.varimp) > 0.2)
+      # Compute the variable importance
+        CR.GRF.varimp <- variable_importance(forest.Y) 
+              
+      # Implement Cluster-Robust GRF
+        CR.GRF <- causal_forest(X[,selected.vars], Y, W, Y.hat = Y.hat, W.hat = W.hat, clusters = loangroups, honesty = TRUE, num.trees = numtrees, 
+                                tune.parameters = c("sample.fraction", "mtry", "min.node.size", "honesty.fraction"))
+        CR.GRF.pred <- predict(CR.GRF, estimate.variance = TRUE)
+        CR.GRF.CATE <- CR.GRF.pred$predictions
+        CR.GRF.CATE.SE <- sqrt(CR.GRF.pred$variance.estimates)
+    
+      # Find lower and upper bounds for 95% confidence intervals
+        lower.CR.GRF <- CR.GRF.CATE - qnorm(0.975)*CR.GRF.CATE.SE
+        upper.CR.GRF <- CR.GRF.CATE + qnorm(0.975)*CR.GRF.CATE.SE
+              
+      # Graph the predicted Cluster-Robust GRF heterogeneous treatment effect estimates
+        if (boolean.plot == TRUE) {
+          hist(CR.GRF.CATE)
+        }
+    
+      # Compute ATE with corresponding 95% confidence intervals
+        CR.GRF.ATE <- average_treatment_effect(CR.GRF, target.sample = "all")
+    
+      # See if the Cluster-Robust GRF succeeded in capturing heterogeneity by plotting the TOC and calculating the 95% confidence interval for the AUTOC
+        CR.GRF.rate <- rank_average_treatment_effect(CR.GRF, CR.GRF.CATE, target = "AUTOC")
+        if (boolean.plot == TRUE) {
+          plot(CR.GRF.rate)
+        }
   
-       # Implement Cluster-Robust CF
-        CF.CR <- causal_forest(X[,selected.vars], Y, W, Y.hat = Y.hat, W.hat = W.hat,
-                         clusters = loangroups, 
-                         num.trees = 8000, tune.parameters = "all")
-        tauhat <- predict(CF.CR)$predictions
-        
-       # Graph the predicted Cluster-Robust CF heterogeneous treatment effect estimates
-        hist(tauhat)
+      # Assessing Cluster-Robust GRF fit using the Best Linear Predictor Approach [BLP]
+        CR.GRF.BLP <- test_calibration(CR.GRF)
+        mean.forest.pred.CR.GRF <- c(CR.GRF.BLP[1,1], CR.GRF.BLP[1,2], (CR.GRF.BLP[1,4] < 0.10))
+        diff.forest.pred.CR.GRF <- c(CR.GRF.BLP[2,1], CR.GRF.BLP[2,2], (CR.GRF.BLP[2,4] < 0.10))
+    
+      # Test of heterogeneity using Differential ATE
+        CR.GRF.ATE.charact <- average_treatment_effect(CR.GRF, target.sample = "all", subset = (characteristics == 1))
+        CR.GRF.ATE.not.charact <- average_treatment_effect(CR.GRF, target.sample = "all", subset = !(characteristics == 1))
+        DiffATE.CR.GRF.mean <- CR.GRF.ATE.charact[1] - CR.GRF.ATE.not.charact[1]
+        DiffATE.CR.GRF.SE <- sqrt(CR.GRF.ATE.charact[2]^2 + CR.GRF.ATE.not.charact[2]^2)
+        lower.DiffATE.CR.GRF <- (DiffATE.CR.GRF.mean - (qnorm(0.975) * DiffATE.CR.GRF.SE))
+        upper.DiffATE.CR.GRF <- (DiffATE.CR.GRF.mean + (qnorm(0.975) * DiffATE.CR.GRF.SE))
   
-       # Test of heterogeneity using Differential ATE
-        ate.subgroup <- average_treatment_effect(CF.CR, target.sample = "all", subset = (characteristics == 1))
-        ate.rest <- average_treatment_effect(CF.CR, target.sample = "all", subset = !(characteristics == 1))
-        resultsTable5OriginalPaper[3,(i+1)] <- paste(round(ate.subgroup[1] - ate.rest[1], 3), "(", sqrt(ate.subgroup[2]^2 + ate.rest[2]^2), ")")
-  
-       # Test of heterogeneity using Best Linear Predictor Analysis
-        # results[(i+1),8] <- test_calibration(CF.CR)[1]
-        # results[(i+1),9] <- test_calibration(CF.CR)[2]
-  
-    # Linear Local Causal Forest estimation:
+    ############################
+    ########### LLCF ###########
+    ############################
+    
       # Grow preliminary forests for (W, X) and (Y, X) separately
-        forest.W <- ll_regression_forest(X, W, honesty = TRUE)
+        forest.W <- ll_regression_forest(X, W, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, 
+                                         num.trees = numtrees, tune.parameters = "all")
         W.hat <- predict(forest.W)$predictions
-        forest.Y <- ll_regression_forest(X, Y, honesty = TRUE)
+        forest.Y <- ll_regression_forest(X, Y, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, 
+                                         num.trees = numtrees, tune.parameters = "all")
         Y.hat <- predict(forest.Y)$predictions
-  
-      # Select variables to include using preliminary LLCF
-        # lasso.mod <- cv.glmnet(X, Y, alpha = 1)
-        # selected <- which(coef(lasso.mod) != 0)
-        # if(length(selected) < 2) {
-        #   selected <- 1:ncol(X)
-        # } else {
-        #   selected <- selected[-1] - 1 # Remove intercept
-        # }
+    
+      # Compute the variable importance
+        LLCF.varimp <- variable_importance(forest.Y) 
+              
+      # Select variables to include using Lasso feature selection
+        lasso.mod <- cv.glmnet(X, Y, alpha = 1)
+        selected <- which(coef(lasso.mod) != 0)
+        if(length(selected) < 2) {
+          selected <- 1:ncol(X)
+        } else {
+          selected <- selected[-1] - 1 # Remove intercept
+        }
   
       # Implement LLCF
-        LLCF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE, num.trees = 8000, tune.parameters = "all")
-        # LLCF.pred <- predict(LLCF, linear.correction.variables = selected, ll.weight.penalty = TRUE, estimate.variance = TRUE)
-        # LLCF.CATE <- mean(LLCF.pred$predictions)
-        # LLCF.CATE.SE <- mean((LLCF.pred$predictions - mean(LLCF.pred$predictions))^2)
-  
-      # Predict: tuning done using set of lambdas
-        llcf.mse.old <- +Inf
-        for (l in length(lambdas)) {
-          llcf.pred.old <- predict(LLCF, linear.correction.variables = 1:ncol(X), ll.lambda = lambdas[l], ll.weight.penalty = TRUE, estimate.variance = TRUE)
-          predictions <- llcf.pred.old$predictions
-          llcf.mse.new <- mean((predictions - mean(predictions))**2)
-          if (llcf.mse.new < llcf.mse.old) {
-            llcf.mse.old <- llcf.mse.new
-            LLCF.CATE.SE <- sqrt(mean(llcf.pred.old$variance.estimates))
-            predictions.new <- predictions
-          }
+        LLCF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, 
+                              num.trees = numtrees, tune.parameters = c("sample.fraction", "mtry", "min.node.size", "honesty.fraction"))
+        LLCF.ATE <- average_treatment_effect(LLCF, target.sample = "all")
+    
+        if (boolean.lambdas == FALSE) {
+          # Predict: tuning without grid search over lambdas
+            LLCF.pred <- predict(LLCF, linear.correction.variables = selected, ll.weight.penalty = TRUE, estimate.variance = TRUE)
+            LLCF.CATE <- LLCF.pred$predictions
+            LLCF.CATE.SE <- sqrt(LLCF.pred$variance.estimates)
+        } else {
+          # Predict: tuning done using set of lambdas
+            LLCF.mse.old <- +Inf
+            for (l in length(lambdas)) {
+              LLCF.CATE.old <- predict(LLCF, linear.correction.variables = selected, ll.lambda = lambdas[l], ll.weight.penalty = TRUE, estimate.variance = TRUE)
+              predictions <- LLCF.CATE.old$predictions
+              LLCF.mse.new <- mean((predictions - mean(predictions))**2)
+              if (LLCF.mse.new < LLCF.mse.old) {
+                LLCF.mse.old <- LLCF.mse.new
+                LLCF.CATE.SE <- sqrt(LLCF.CATE.old$variance.estimates))
+                LLCF.CATE <- predictions
+              }
+            }
         }
-        
+      
       # Test of heterogeneity using Differential ATE
-        ate.subgroup <- average_treatment_effect(LLCF, target.sample = "all", subset = (characteristics == 1))
-        ate.rest <- average_treatment_effect(LLCF, target.sample = "all", subset = !(characteristics == 1))
-        resultsTable5OriginalPaper[4,(i+1)] <- paste(round(ate.subgroup[1] - ate.rest[1], 3), "(", sqrt(ate.subgroup[2]^2 + ate.rest[2]^2), ")")
+        LLCF.ATE.charact <- average_treatment_effect(LLCF, target.sample = "all", subset = (characteristics == 1))
+        LLCF.ATE.not.charact <- average_treatment_effect(LLCF, target.sample = "all", subset = !(characteristics == 1))
+        DiffATE.LLCF.mean <- LLCF.ATE.charact[1] - LLCF.ATE.not.charact[1]
+        DiffATE.LLCF.SE <- sqrt(LLCF.ATE.charact[2]^2 + LLCF.ATE.not.charact[2]^2)
+        lower.DiffATE.LLCF <- (DiffATE.LLCF.mean - (qnorm(0.975) * DiffATE.LLCF.SE))
+        upper.DiffATE.LLCF <- (DiffATE.LLCF.mean + (qnorm(0.975) * DiffATE.LLCF.SE))
+
+        results_BLP <- data.frame(t(c(mean.forest.pred.GRF, diff.forest.pred.GRF, 
+                         mean.forest.pred.CR.GRF, diff.forest.pred.CR.GRF, 
+                         mean.forest.pred.LLCF, diff.forest.pred.LLCF)))
+    
+        results_DiffATE <- data.frame(t(c(paste(round(DiffATE.GRF.mean, 3), "(", round(DiffATE.GRF.SE, 3), ")"),
+                             paste(round(DiffATE.CR.GRF.mean, 3), "(", round(DiffATE.CR.GRF.SE, 3), ")"),
+                             paste(round(DiffATE.LLCF.mean, 3), "(", round(DiffATE.LLCF.SE, 3), ")"))))   
+    
+        data.frame(cbind(results_ATE, results_AUTOC, results_BLP, results_DiffATE)
+    })
+    results_BLP <- basic.results[,1:6]        
+    colnames(results_BLP) <- c("BLP[1] GRF", "BLP[2] GRF", "BLP[1] CR.GRF", "BLP[2] CR.GRF", "BLP[1] LLCF", "BLP[2] LLCF")
+    rownames(results_BLP) <- c("savings", "risk loving", "wage earner", "household member chronically ill", "impatient")   
+    
+    results_DiffATE <- basic.results[,7:9]                                    
+    colnames(results_DiffATE) <- c("Differential ATE GRF", "Differential ATE CR.GRF", "Differential ATE LLCF")
+    rownames(results_DiffATE) <- c("savings", "risk loving", "wage earner", "household member chronically ill", "impatient")
+    
+    results = list("results_BLP" = results_BLP, 
+                         "results_DiffATE" = results_DiffATE)                              
+    return(results)
 }
 
+results = run_method(numtrees, index, lambdas, boolean.plot, boolean.lambdas)
+results_table5 <- list('Sheet1' = results[["results_BLP"]], 'Sheet2' = results[["results_DiffATE"]])
+write.xlsx(results_table5, file = "Table 5 (Field et al., 2013).xlsx")
