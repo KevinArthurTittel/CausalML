@@ -59,12 +59,6 @@ library(haven)
   # Combine all the control covariates in one large matrix
     # X <- as.matrix(cbind(X, stratifmatrix, loansizematrix, loanofficermatrix))
     X <- as.matrix(cbind(X, loansizematrix))
- 
-# Initialize results matrix
-  resultsTable5OriginalPaper <- matrix(data = 0, nrow = 5, ncol = 6)
-  resultsTable5OriginalPaper[1,] <- t(c("dependent variable", "savings", "risk loving", "wage earner", "household member chronically ill",
-                   "impatient"))
-  resultsTable5OriginalPaper[2:5,1] <- c("CF", "Cluster-robust CF", "LLCF", "observations")
 
 # Initialize parameters
   numtrees <- 2000
