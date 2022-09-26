@@ -67,6 +67,7 @@ library(haven)
   lambdas <- c(0, 0.1, 0.3, 0.5, 0.7, 1, 1.5)
   boolean.lambdas <- FALSE
   boolean.plot <- FALSE
+  set.seed(123)
 
 # Estimation procedure
 run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
@@ -79,21 +80,22 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
     ###########################
     
       # Grow preliminary forests for (W, X) and (Y, X) separately
-        forest.W <- regression_forest(X, W, num.trees = numtrees, tune.parameters = "all")
+        forest.W <- regression_forest(X, W, num.trees = numtrees, honesty = TRUE, tune.parameters = "all")
         W.hat <- predict(forest.W)$predictions
-        forest.Y <- regression_forest(X, Y, num.trees = numtrees, tune.parameters = "all")
+        forest.Y <- regression_forest(X, Y, num.trees = numtrees, honesty = TRUE, tune.parameters = "all")
         Y.hat <- predict(forest.Y)$predictions
 
       # Compute the variable importance
         GRF.varimp <- variable_importance(forest.Y) 
     
       # Select variables to include using preliminary GRF
-        prelim.GRF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees)
+        prelim.GRF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees, honesty = TRUE)
         prelim.GRF.varimp <- variable_importance(prelim.GRF)
         selected.vars <- which(prelim.GRF.varimp / mean(prelim.GRF.varimp) > 0.2)
 
       # Implement GRF
-        GRF <- causal_forest(X[,selected.vars], Y, W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees, tune.parameters = "all")
+        GRF <- causal_forest(X[,selected.vars], Y, W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees, 
+                             honesty = TRUE, tune.parameters = c("sample.fraction", "mtry", "min.node.size"))
         GRF.pred <- predict(GRF, estimate.variance = TRUE)
         GRF.CATE <- GRF.pred$predictions
         GRF.CATE.SE <- sqrt(GRF.pred$variance.estimates)
@@ -136,7 +138,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
     ############################
     
       # Select variables to include using preliminary Cluster-Robust GRF
-        prelim.CR.GRF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, clusters = loangroups, num.trees = numtrees)
+        prelim.CR.GRF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE, clusters = loangroups, num.trees = numtrees)
         prelim.CR.GRF.varimp <- variable_importance(prelim.CR.GRF)
         selected.vars <- which(prelim.CR.GRF.varimp / mean(prelim.CR.GRF.varimp) > 0.2)
 
@@ -144,7 +146,8 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
         CR.GRF.varimp <- variable_importance(forest.Y) 
               
       # Implement Cluster-Robust GRF
-        CR.GRF <- causal_forest(X[,selected.vars], Y, W, Y.hat = Y.hat, W.hat = W.hat, clusters = loangroups, num.trees = numtrees, tune.parameters = "all")
+        CR.GRF <- causal_forest(X[,selected.vars], Y, W, Y.hat = Y.hat, W.hat = W.hat, clusters = loangroups, 
+                                honesty = TRUE, num.trees = numtrees, tune.parameters = c("sample.fraction", "mtry", "min.node.size"))
         CR.GRF.pred <- predict(CR.GRF, estimate.variance = TRUE)
         CR.GRF.CATE <- CR.GRF.pred$predictions
         CR.GRF.CATE.SE <- sqrt(CR.GRF.pred$variance.estimates)
@@ -186,9 +189,11 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
     ############################
     
        # Grow preliminary forests for (W, X) and (Y, X) separately
-        forest.W <- ll_regression_forest(X, W, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, num.trees = numtrees, tune.parameters = "all")
+        forest.W <- ll_regression_forest(X, W, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, num.trees = numtrees, 
+                                         tune.parameters = c("sample.fraction", "mtry", "min.node.size"))
         W.hat <- predict(forest.W)$predictions
-        forest.Y <- ll_regression_forest(X, Y, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, num.trees = numtrees, tune.parameters = "all")
+        forest.Y <- ll_regression_forest(X, Y, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, num.trees = numtrees, 
+                                         tune.parameters = c("sample.fraction", "mtry", "min.node.size"))
         Y.hat <- predict(forest.Y)$predictions
   
       # Compute the variable importance
@@ -205,7 +210,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
   
       # Implement LLCF
         LLCF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE, enable.ll.split = TRUE, 
-                              ll.split.weight.penalty = TRUE, num.trees = numtrees, tune.parameters = "all")
+                              ll.split.weight.penalty = TRUE, num.trees = numtrees, tune.parameters = c("sample.fraction", "mtry", "min.node.size"))
         LLCF.ATE <- average_treatment_effect(LLCF, target.sample = "all")
     
         if (boolean.lambdas == FALSE) {
