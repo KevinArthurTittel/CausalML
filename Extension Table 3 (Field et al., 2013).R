@@ -59,13 +59,6 @@ library(haven)
   # Combine all the control covariates in one large matrix
     # X <- as.matrix(cbind(X, stratifmatrix, loansizematrix, loanofficermatrix))
     X <- as.matrix(cbind(X, loansizematrix))
-    
-# Initialize results matrix
-  resultsTable3OriginalPaper <- matrix(data = 0, nrow = 8, ncol = 4)
-  resultsTable3OriginalPaper[2:8,1] <- c("within 8 weeks of due date", "within 24 weeks of due date", "within 52 weeks of due date",
-                 "amount outstanding within 52 weeks of due date", "made first half of loan repayments on time",
-                 "repaid at least 50 percent of the loan", "made first payment")
-  resultsTable3OriginalPaper[1,] <- c("dependent variable", "CF", "Cluster-robust CF", "LLCF")
 
 # Initialize parameters
   numtrees <- 2000
