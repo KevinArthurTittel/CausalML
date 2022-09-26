@@ -59,7 +59,6 @@ library(haven)
   # Combine all the control covariates in one large matrix
     # X <- as.matrix(cbind(X, stratifmatrix, loansizematrix, loanofficermatrix))
     X <- as.matrix(cbind(X, loansizematrix))
-    # X[X == "NA"] <- 0 # Set all missing values to 0 as done in original paper
 
 # Initialize parameters
   numtrees <- 2000
