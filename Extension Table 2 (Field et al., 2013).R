@@ -60,11 +60,6 @@ library(haven)
     # X <- as.matrix(cbind(X, stratifmatrix, loansizematrix, loanofficermatrix))
     X <- as.matrix(cbind(X, loansizematrix))
 
-# Initialize results matrix
-  resultsTable2OriginalPaper <- matrix(data = 0, nrow = 13, ncol = 4)
-  resultsTable2OriginalPaper[1,] <- t(c("dependent variable", "CF", "Cluster-robust CF", "LLCF"))
-  resultsTable2OriginalPaper[2:13,1] <- rep(c("profit", "capital", "log of monhtly HH income"), 4)
-
 # Initialize parameters
   numtrees <- 2000
   index <- c(1:12)
