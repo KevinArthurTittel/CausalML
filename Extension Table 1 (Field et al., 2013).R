@@ -228,10 +228,9 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
               if (LLCF.mse.new < LLCF.mse.old) {
                 LLCF.mse.old <- LLCF.mse.new
                 LLCF.CATE.SE <- sqrt(LLCF.CATE.old$variance.estimates))
-                predictions.new <- predictions
+                LLCF.CATE <- predictions
               }
             }
-            LLCF.CATE <- predictions.new
         }
        
       # Find lower and upper bounds for 95% confidence intervals
