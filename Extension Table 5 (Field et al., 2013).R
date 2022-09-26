@@ -88,9 +88,6 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
       missingvalues <- as.integer(is.na(Y)) + as.integer(is.na(characteristics))
       missingvalues[missingvalues == 2] <- 1
   
-    # Determine number of available observations
-      resultsTable5OriginalPaper[5,(i+1)] <- (845 - sum(missingvalues))
-  
     # Remove the observations for which Y and/or the characteristic for Table 5 has an NA value
       X <- X[!missingvalues,]
       W <- W[!missingvalues]
@@ -267,7 +264,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
     
         results_DiffATE <- data.frame(t(c(paste(round(DiffATE.GRF.mean, 3), "(", round(DiffATE.GRF.SE, 3), ")"),
                              paste(round(DiffATE.CR.GRF.mean, 3), "(", round(DiffATE.CR.GRF.SE, 3), ")"),
-                             paste(round(DiffATE.LLCF.mean, 3), "(", round(DiffATE.LLCF.SE, 3), ")"))))   
+                             paste(round(DiffATE.LLCF.mean, 3), "(", round(DiffATE.LLCF.SE, 3), ")")), (845 - sum(missingvalues))))   
     
         data.frame(cbind(results_ATE, results_AUTOC, results_BLP, results_DiffATE)
     })
@@ -275,8 +272,8 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
     colnames(results_BLP) <- c("BLP[1] GRF", "BLP[2] GRF", "BLP[1] CR.GRF", "BLP[2] CR.GRF", "BLP[1] LLCF", "BLP[2] LLCF")
     rownames(results_BLP) <- c("savings", "risk loving", "wage earner", "household member chronically ill", "impatient")   
     
-    results_DiffATE <- basic.results[,7:9]                                    
-    colnames(results_DiffATE) <- c("Differential ATE GRF", "Differential ATE CR.GRF", "Differential ATE LLCF")
+    results_DiffATE <- basic.results[,7:10]                                    
+    colnames(results_DiffATE) <- c("Differential ATE GRF", "Differential ATE CR.GRF", "Differential ATE LLCF", "Number of observations")
     rownames(results_DiffATE) <- c("savings", "risk loving", "wage earner", "household member chronically ill", "impatient")
     
     results = list("results_BLP" = results_BLP, 
