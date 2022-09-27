@@ -7,6 +7,8 @@ library(standardize)
 library(foreign)
 library(stats)
 library(haven)
+library(ggplot2)
+set.seed(123)
 
 # Import and prepare Microfinance data set (Field et al., 2013)
   Grace_Period_Data <- read_dta("Downloads/112672-V1/Grace-Period-Data.dta")
@@ -69,7 +71,10 @@ library(haven)
   boolean.lambdas <- FALSE
   boolean.plot <- FALSE
   version <- 1 # 1 = only current characteristics in X-matrix, 2 = all characteristics in X-matrix
-  set.seed(123)
+  filename.plot.GRF.CATE <- "GRF CATE .pdf"
+  filename.plot.CR.GRF.CATE <- "CR.GRF CATE .pdf"
+  filename.plot.LLCF.CATE <- "LLCF CATE .pdf"
+  
 
 # Estimation procedure
 run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, version) {
@@ -111,6 +116,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
       # Compute the variable importance
         GRF.varimp <- variable_importance(forest.Y) 
         GRF.mostimportant <- colnames(current.X)[order(GRF.varimp)[1:4]] # 4 most important variables for splitting
+        GRF.mostimportant <- c(GRF.mostimportant, colnames(characteristic))
         
       # Select variables to include using preliminary GRF
         prelim.GRF <- causal_forest(current.X, current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees, honesty = TRUE)
@@ -159,15 +165,31 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
       # Plot the estimated CATE against the covariates with the highest variable importance, and the characteristic vector
         if (boolean.plot == TRUE) {
           for (k in 1:length(GRF.mostimportant)) {
-            plot(current.X[, GRF.mostimportant[k]], GRF.CATE, ylim = range(upper.GRF, lower.GRF, 0, 2), xlab = GRF.mostimportant[k], ylab = "tau", type = "l")
-            lines(current.X[, GRF.mostimportant[k]], upper.GRF, col = 1, lty = 2)
-            lines(current.X[, GRF.mostimportant[k]], lower.GRF, col = 1, lty = 2)
-            lines(current.X[, GRF.mostimportant[k]], pmax(0, current.X[, GRF.mostimportant[k]]), col = 2, lty = 2)
+            # Set all variables at their median values
+              X.median <- apply(current.X, 2, median)
+              
+            # Create ordered vector of important variable
+              important.var.test = seq(min(current.X$(GRF.mostimportant[k])), max(current.X$(GRF.mostimportant[k])))
+              
+            # Create test set
+              X.test <- matrix(rep(X.median, length(important.var.test)), length(important.var.test), byrow = TRUE)
+              X.test[,(GRF.mostimportant[k])] = important.var.test
+              
+            # Predict new CATE estimates
+              GRF.pred.test <- predict(GRF, X.test, estimate.variance = TRUE)
+              GRF.CATE.test <- GRF.pred.test$predictions
+              GRF.CATE.SE.test <- sqrt(GRF.pred.test$variance.estimates)
+              lower.GRF.test <- GRF.CATE.test - qnorm(0.975)*GRF.CATE.SE.test
+              upper.GRF.test <- GRF.CATE.test + qnorm(0.975)*GRF.CATE.SE.test
+            
+            # Make plot and save
+              pdf(fun_insert(x = filename.plot.GRF.CATE, pos = (nchar(filename.plot.GRF.CATE) - 4), insert = (GRF.mostimportant[k])))
+              plot(X.test[,(GRF.mostimportant[k])], GRF.CATE.test, type = "l", ylim = range(min(lower.GRF.test), max(upper.GRF.test)), xlab = GRF.mostimportant[k], ylab = "CATE")
+              lines(X.test[,(GRF.mostimportant[k])], upper.GRF.test, col = 1, lty = 2)
+              lines(X.test[,(GRF.mostimportant[k])], lower.GRF.test, col = 1, lty = 2)
+              grid()
+              dev.off()
           }
-          plot(current.X[,colnames(characteristic)], GRF.CATE, ylim = range(upper.GRF, lower.GRF, 0, 2), xlab = colnames(characteristic), ylab = "tau", type = "l")
-          lines(current.X[,colnames(characteristic)], upper.GRF, col = 1, lty = 2)
-          lines(current.X[,colnames(characteristic)], lower.GRF, col = 1, lty = 2)
-          lines(current.X[,colnames(characteristic)], pmax(0, current.X[,colnames(characteristic)], col = 2, lty = 2)
          }
         
     ############################
@@ -182,6 +204,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
       # Compute the variable importance
         CR.GRF.varimp <- variable_importance(forest.Y) 
         CR.GRF.mostimportant <- colnames(current.X)[order(CR.GRF.varimp)[1:4]] # 4 most important variables for splitting
+        CR.GRF.mostimportant <- c(CR.GRF.mostimportant, colnames(characteristic))
         
       # Implement Cluster-Robust GRF
         CR.GRF <- causal_forest(current.X[,selected.vars], current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, clusters = current.loangroups, honesty = TRUE, num.trees = numtrees, 
@@ -225,15 +248,31 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
       # Plot the estimated CATE against the covariates with the highest variable importance, and the characteristic vector
         if (boolean.plot == TRUE) {
           for (k in 1:length(CR.GRF.mostimportant)) {
-            plot(current.X[, CR.GRF.mostimportant[k]], CR.GRF.CATE, ylim = range(upper.CR.GRF, lower.CR.GRF, 0, 2), xlab = CR.GRF.mostimportant[k], ylab = "tau", type = "l")
-            lines(current.X[, CR.GRF.mostimportant[k]], upper.CR.GRF, col = 1, lty = 2)
-            lines(current.X[, CR.GRF.mostimportant[k]], lower.CR.GRF, col = 1, lty = 2)
-            lines(current.X[, CR.GRF.mostimportant[k]], pmax(0, current.X[, CR.GRF.mostimportant[k]]), col = 2, lty = 2)
+            # Set all variables at their median values
+              X.median <- apply(current.X, 2, median)
+              
+            # Create ordered vector of important variable
+              important.var.test = seq(min(current.X$(CR.GRF.mostimportant[k])), max(current.X$(CR.GRF.mostimportant[k])))
+              
+            # Create test set
+              X.test <- matrix(rep(X.median, length(important.var.test)), length(important.var.test), byrow = TRUE)
+              X.test[,(CR.GRF.mostimportant[k])] = important.var.test
+              
+            # Predict new CATE estimates
+              CR.GRF.pred.test <- predict(CR.GRF, X.test, estimate.variance = TRUE)
+              CR.GRF.CATE.test <- CR.GRF.pred.test$predictions
+              CR.GRF.CATE.SE.test <- sqrt(CR.GRF.pred.test$variance.estimates)
+              lower.CR.GRF.test <- CR.GRF.CATE.test - qnorm(0.975)*CR.GRF.CATE.SE.test
+              upper.CR.GRF.test <- CR.GRF.CATE.test + qnorm(0.975)*CR.GRF.CATE.SE.test
+            
+            # Make plot and save
+              pdf(fun_insert(x = filename.plot.CR.GRF.CATE, pos = (nchar(filename.plot.CR.GRF.CATE) - 4), insert = (CR.GRF.mostimportant[k])))
+              plot(X.test[,(CR.GRF.mostimportant[k])], CR.GRF.CATE.test, type = "l", ylim = range(min(lower.CR.GRF.test), max(upper.CR.GRF.test)), xlab = CR.GRF.mostimportant[k], ylab = "CATE")
+              lines(X.test[,(CR.GRF.mostimportant[k])], upper.CR.GRF.test, col = 1, lty = 2)
+              lines(X.test[,(CR.GRF.mostimportant[k])], lower.CR.GRF.test, col = 1, lty = 2)
+              grid()
+              dev.off()
           }
-          plot(current.X[,colnames(characteristic)], CR.GRF.CATE, ylim = range(upper.CR.GRF, lower.CR.GRF, 0, 2), xlab = colnames(characteristic), ylab = "tau", type = "l")
-          lines(current.X[,colnames(characteristic)], upper.CR.GRF, col = 1, lty = 2)
-          lines(current.X[,colnames(characteristic)], lower.CR.GRF, col = 1, lty = 2)
-          lines(current.X[,colnames(characteristic)], pmax(0, current.X[,colnames(characteristic)], col = 2, lty = 2)
          }
          
     ############################
@@ -251,6 +290,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
       # Compute the variable importance
         LLCF.varimp <- variable_importance(forest.Y) 
         LLCF.mostimportant <- colnames(current.X)[order(LLCF.varimp)[1:4]] # 4 most important variables for splitting
+        LLCF.mostimportant <- c(LLCF.mostimportant, colnames(characteristic))
         
       # Select variables to include using Lasso feature selection
         lasso.mod <- cv.glmnet(current.X, current.Y, alpha = 1)
@@ -320,15 +360,31 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
       # Plot the estimated CATE against the covariates with the highest variable importance, and the characteristic vector
         if (boolean.plot == TRUE) {
           for (k in 1:length(LLCF.mostimportant)) {
-            plot(current.X[, LLCF.mostimportant[k]], LLCF.CATE, ylim = range(upper.LLCF, lower.LLCF, 0, 2), xlab = LLCF.mostimportant[k], ylab = "tau", type = "l")
-            lines(current.X[, LLCF.mostimportant[k]], upper.LLCF, col = 1, lty = 2)
-            lines(current.X[, LLCF.mostimportant[k]], lower.LLCF, col = 1, lty = 2)
-            lines(current.X[, LLCF.mostimportant[k]], pmax(0, current.X[, LLCF.mostimportant[k]]), col = 2, lty = 2)
+            # Set all variables at their median values
+              X.median <- apply(current.X, 2, median)
+              
+            # Create ordered vector of important variable
+              important.var.test = seq(min(current.X$(LLCF.mostimportant[k])), max(current.X$(LLCF.mostimportant[k])))
+              
+            # Create test set
+              X.test <- matrix(rep(X.median, length(important.var.test)), length(important.var.test), byrow = TRUE)
+              X.test[,(LLCF.mostimportant[k])] = important.var.test
+              
+            # Predict new CATE estimates
+              LLCF.pred.test <- predict(LLCF, X.test, estimate.variance = TRUE)
+              LLCF.CATE.test <- LLCF.pred.test$predictions
+              LLCF.CATE.SE.test <- sqrt(LLCF.pred.test$variance.estimates)
+              lower.LLCF.test <- LLCF.CATE.test - qnorm(0.975)*LLCF.CATE.SE.test
+              upper.LLCF.test <- LLCF.CATE.test + qnorm(0.975)*LLCF.CATE.SE.test
+            
+            # Make plot and save
+              pdf(fun_insert(x = filename.plot.LLCF.CATE, pos = (nchar(filename.plot.LLCF.CATE) - 4), insert = (LLCF.mostimportant[k])))
+              plot(X.test[,(LLCF.mostimportant[k])], LLCF.CATE.test, type = "l", ylim = range(min(lower.LLCF.test), max(upper.LLCF.test)), xlab = LLCF.mostimportant[k], ylab = "CATE")
+              lines(X.test[,(LLCF.mostimportant[k])], upper.LLCF.test, col = 1, lty = 2)
+              lines(X.test[,(LLCF.mostimportant[k])], lower.LLCF.test, col = 1, lty = 2)
+              grid()
+              dev.off()
           }
-          plot(current.X[,colnames(characteristic)], LLCF.CATE, ylim = range(upper.LLCF, lower.LLCF, 0, 2), xlab = colnames(characteristic), ylab = "tau", type = "l")
-          lines(current.X[,colnames(characteristic)], upper.LLCF, col = 1, lty = 2)
-          lines(current.X[,colnames(characteristic)], lower.LLCF, col = 1, lty = 2)
-          lines(current.X[,colnames(characteristic)], pmax(0, current.X[,colnames(characteristic)], col = 2, lty = 2)
          }
          
         results_BLP <- data.frame(t(c(mean.forest.pred.GRF, diff.forest.pred.GRF, 
@@ -361,6 +417,12 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
     results = list("results_BLP" = results_BLP, 
                          "results_DiffATE" = results_DiffATE)                              
     return(results)
+}
+
+fun_insert <- function(x, pos, insert) {
+  gsub(paste0("^(.{", pos, "})(.*)$"),
+       paste0("\\1", insert, "\\2"),
+       x)
 }
 
 results = run_method(numtrees, index, lambdas, boolean.plot, boolean.lambdas, version)
