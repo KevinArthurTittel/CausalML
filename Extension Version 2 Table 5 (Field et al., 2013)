@@ -109,7 +109,8 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
         
       # Compute the variable importance
         GRF.varimp <- variable_importance(forest.Y) 
-    
+        GRF.mostimportant <- colnames(current.X)[order(GRF.varimp)[1:4]] # 4 most important variables for splitting
+        
       # Select variables to include using preliminary GRF
         prelim.GRF <- causal_forest(current.X, current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees, honesty = TRUE)
         prelim.GRF.varimp <- variable_importance(prelim.GRF)
@@ -154,6 +155,20 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
         # upper.DiffATE.GRF <- (DiffATE.GRF.mean + (qnorm(0.975) * DiffATE.GRF.SE))
         DiffATE.GRF.test <- t.test(GRF.ATE.charact, GRF.ATE.not.charact, alternative = "two.sided", var.equal = FALSE)
         
+      # Plot the estimated CATE against the covariates with the highest variable importance, and the characteristic vector
+        if (boolean.plot == TRUE) {
+          for (k in 1:length(GRF.mostimportant)) {
+            plot(current.X[, GRF.mostimportant[k]], GRF.CATE, ylim = range(upper.GRF, lower.GRF, 0, 2), xlab = GRF.mostimportant[k], ylab = "tau", type = "l")
+            lines(current.X[, GRF.mostimportant[k]], upper.GRF, col = 1, lty = 2)
+            lines(current.X[, GRF.mostimportant[k]], lower.GRF, col = 1, lty = 2)
+            lines(current.X[, GRF.mostimportant[k]], pmax(0, current.X[, GRF.mostimportant[k]]), col = 2, lty = 2)
+          }
+          plot(current.X[,colnames(characteristic)], GRF.CATE, ylim = range(upper.GRF, lower.GRF, 0, 2), xlab = colnames(characteristic), ylab = "tau", type = "l")
+          lines(current.X[,colnames(characteristic)], upper.GRF, col = 1, lty = 2)
+          lines(current.X[,colnames(characteristic)], lower.GRF, col = 1, lty = 2)
+          lines(current.X[,colnames(characteristic)], pmax(0, current.X[,colnames(characteristic)], col = 2, lty = 2)
+         }
+        
     ############################
     #### Cluster-Robust GRF ####
     ############################
@@ -165,7 +180,8 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
   
       # Compute the variable importance
         CR.GRF.varimp <- variable_importance(forest.Y) 
-              
+        CR.GRF.mostimportant <- colnames(current.X)[order(CR.GRF.varimp)[1:4]] # 4 most important variables for splitting
+        
       # Implement Cluster-Robust GRF
         CR.GRF <- causal_forest(current.X[,selected.vars], current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, clusters = current.loangroups, honesty = TRUE, num.trees = numtrees, 
                                 tune.parameters = c("sample.fraction", "mtry", "min.node.size", "honesty.fraction"))
@@ -205,6 +221,19 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
         # upper.DiffATE.GRF <- (DiffATE.GRF.mean + (qnorm(0.975) * DiffATE.GRF.SE))
         DiffATE.CR.GRF.test <- t.test(CR.GRF.ATE.charact, CR.GRF.ATE.not.charact, alternative = "two.sided", var.equal = FALSE)
   
+      # Plot the estimated CATE against the covariates with the highest variable importance, and the characteristic vector
+        if (boolean.plot == TRUE) {
+          for (k in 1:length(CR.GRF.mostimportant)) {
+            plot(current.X[, CR.GRF.mostimportant[k]], CR.GRF.CATE, ylim = range(upper.CR.GRF, lower.CR.GRF, 0, 2), xlab = CR.GRF.mostimportant[k], ylab = "tau", type = "l")
+            lines(current.X[, CR.GRF.mostimportant[k]], upper.CR.GRF, col = 1, lty = 2)
+            lines(current.X[, CR.GRF.mostimportant[k]], lower.CR.GRF, col = 1, lty = 2)
+            lines(current.X[, CR.GRF.mostimportant[k]], pmax(0, current.X[, CR.GRF.mostimportant[k]]), col = 2, lty = 2)
+          }
+          plot(current.X[,colnames(characteristic)], CR.GRF.CATE, ylim = range(upper.CR.GRF, lower.CR.GRF, 0, 2), xlab = colnames(characteristic), ylab = "tau", type = "l")
+          lines(current.X[,colnames(characteristic)], upper.CR.GRF, col = 1, lty = 2)
+          lines(current.X[,colnames(characteristic)], lower.CR.GRF, col = 1, lty = 2)
+          lines(current.X[,colnames(characteristic)], pmax(0, current.X[,colnames(characteristic)], col = 2, lty = 2)
+         }
     ############################
     ########### LLCF ###########
     ############################
@@ -219,7 +248,8 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
     
       # Compute the variable importance
         LLCF.varimp <- variable_importance(forest.Y) 
-              
+        LLCF.mostimportant <- colnames(current.X)[order(LLCF.varimp)[1:4]] # 4 most important variables for splitting
+        
       # Select variables to include using Lasso feature selection
         lasso.mod <- cv.glmnet(current.X, current.Y, alpha = 1)
         selected <- which(coef(lasso.mod) != 0)
@@ -253,7 +283,30 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
               }
             }
         }
+        
+      # Find lower and upper bounds for 95% confidence intervals
+        lower.LLCF <- LLCF.CATE - qnorm(0.975)*LLCF.CATE.SE
+        upper.LLCF <- LLCF.CATE + qnorm(0.975)*LLCF.CATE.SE
       
+      # Graph the predicted Cluster-Robust GRF heterogeneous treatment effect estimates
+        if (boolean.plot == TRUE) {
+          hist(LLCF.CATE)
+        }
+    
+      # Compute ATE with corresponding 95% confidence intervals
+        LLCF.ATE <- average_treatment_effect(LLCF, target.sample = "all")
+    
+      # See if the Cluster-Robust GRF succeeded in capturing heterogeneity by plotting the TOC and calculating the 95% confidence interval for the AUTOC
+        LLCF.rate <- rank_average_treatment_effect(LLCF, LLCF.CATE, target = "AUTOC")
+        if (boolean.plot == TRUE) {
+          plot(LLCF.rate)
+        }
+  
+      # Assessing Cluster-Robust GRF fit using the Best Linear Predictor Approach [BLP]
+        LLCF.BLP <- test_calibration(LLCF)
+        mean.forest.pred.LLCF <- c(LLCF.BLP[1,1], LLCF.BLP[1,2], (LLCF.BLP[1,4] < 0.10))
+        diff.forest.pred.LLCF <- c(LLCF.BLP[2,1], LLCF.BLP[2,2], (LLCF.BLP[2,4] < 0.10))
+        
       # Test of heterogeneity using Differential ATE
         LLCF.ATE.charact <- average_treatment_effect(LLCF, target.sample = "all", subset = (characteristic == 1))
         LLCF.ATE.not.charact <- average_treatment_effect(LLCF, target.sample = "all", subset = !(characteristic == 1))
@@ -263,6 +316,20 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
         # upper.DiffATE.LLCF <- (DiffATE.LLCF.mean + (qnorm(0.975) * DiffATE.LLCF.SE))
         DiffATE.LLCF.test <- t.test(LLCF.ATE.charact, LLCF.ATE.not.charact, alternative = "two.sided", var.equal = FALSE)
 
+      # Plot the estimated CATE against the covariates with the highest variable importance, and the characteristic vector
+        if (boolean.plot == TRUE) {
+          for (k in 1:length(LLCF.mostimportant)) {
+            plot(current.X[, LLCF.mostimportant[k]], LLCF.CATE, ylim = range(upper.LLCF, lower.LLCF, 0, 2), xlab = LLCF.mostimportant[k], ylab = "tau", type = "l")
+            lines(current.X[, LLCF.mostimportant[k]], upper.LLCF, col = 1, lty = 2)
+            lines(current.X[, LLCF.mostimportant[k]], lower.LLCF, col = 1, lty = 2)
+            lines(current.X[, LLCF.mostimportant[k]], pmax(0, current.X[, LLCF.mostimportant[k]]), col = 2, lty = 2)
+          }
+          plot(current.X[,colnames(characteristic)], LLCF.CATE, ylim = range(upper.LLCF, lower.LLCF, 0, 2), xlab = colnames(characteristic), ylab = "tau", type = "l")
+          lines(current.X[,colnames(characteristic)], upper.LLCF, col = 1, lty = 2)
+          lines(current.X[,colnames(characteristic)], lower.LLCF, col = 1, lty = 2)
+          lines(current.X[,colnames(characteristic)], pmax(0, current.X[,colnames(characteristic)], col = 2, lty = 2)
+         }
+         
         results_BLP <- data.frame(t(c(mean.forest.pred.GRF, diff.forest.pred.GRF, 
                          mean.forest.pred.CR.GRF, diff.forest.pred.CR.GRF, 
                          mean.forest.pred.LLCF, diff.forest.pred.LLCF)))
