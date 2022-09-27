@@ -10,7 +10,7 @@ This folder contains replication files for my theoretical MSc thesis titled "Rob
 - Extension Table 2 (Field et al., 2013).R: extends Table 2 of the original paper of Field et al. (2013) by applying GRF, Cluster-Robust GRF, and LLCF on the original analysis.
 - Extension Table 3 (Field et al., 2013).R: extends Table 3 of the original paper of Field et al. (2013) by applying GRF, Cluster-Robust GRF, and LLCF on the original analysis.
 - Extension Table 4 (Field et al., 2013).R: extends Table 4 of the original paper of Field et al. (2013) by applying GRF, Cluster-Robust GRF, and LLCF on the original analysis.
-- Extension Table 5 (Field et al., 2013).R: extends Table 5 of the original paper of Field et al. (2013) by applying GRF, Cluster-Robust GRF, and LLCF on the original analysis.
+- Extension Table 5 (Field et al., 2013).R: extends Table 5 of the original paper of Field et al. (2013). GRF, Cluster-Robust GRF, and LLCF are implemented to examine heterogeneity in treatment along 5 characteristics (owning a savings account, being risk loving, a chronically ill family member, wage earner, treatment effect modifiers, being impatient) on 3 dependent variables (monthly profits, log of monthly HH income, and capital). This replication file provides tables and plots of ATE and HTE estimates (with SE and CI), heterogeneity evaluations in terms of Best Linear Predictor approach, Rank Average Treatment Effect approach with TOC plots, and Differential ATE approach, variable importance measures with plots of the estimated CATE against variables with highest importance and the above mentioned characteristics of interest.
 
 # Required packages
 
