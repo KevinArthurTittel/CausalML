@@ -76,39 +76,39 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
     Y <- as.vector(Y)
   
     # Appoint characteristic for Table 5 (Field et al., 2013)
-      characteristics <- Grace_Period_Data[,(74+i)]
+      characteristic <- Grace_Period_Data[,(74+i)]
   
     # Determine missing values
-      missingvalues <- as.integer(is.na(Y)) + as.integer(is.na(characteristics))
+      missingvalues <- as.integer(is.na(Y)) + as.integer(is.na(characteristic))
       missingvalues[missingvalues == 2] <- 1
   
     # Remove the observations for which Y and/or the characteristic for Table 5 has an NA value
-      X <- X[!missingvalues,]
-      W <- W[!missingvalues]
-      loangroups <- loangroups[!missingvalues]
-      characteristics <- characteristics[!missingvalues]
-      Y <- Y[!missingvalues]
+      current.X <- X[!missingvalues,]
+      current.W <- W[!missingvalues]
+      current.loangroups <- loangroups[!missingvalues]
+      current.characteristics <- characteristics[!missingvalues]
+      current.Y <- Y[!missingvalues]
   
     ###########################
     ########### GRF ###########
     ###########################
     
       # Grow preliminary forests for (W, X) and (Y, X) separately
-        forest.W <- regression_forest(X, W, num.trees = numtrees, honesty = TRUE, tune.parameters = "all")
+        forest.W <- regression_forest(current.X, current.W, num.trees = numtrees, honesty = TRUE, tune.parameters = "all")
         W.hat <- predict(forest.W)$predictions
-        forest.Y <- regression_forest(X, Y, num.trees = numtrees, honesty = TRUE, tune.parameters = "all")
+        forest.Y <- regression_forest(current.X, current.Y, num.trees = numtrees, honesty = TRUE, tune.parameters = "all")
         Y.hat <- predict(forest.Y)$predictions
         
       # Compute the variable importance
         GRF.varimp <- variable_importance(forest.Y) 
     
       # Select variables to include using preliminary GRF
-        prelim.GRF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees, honesty = TRUE)
+        prelim.GRF <- causal_forest(current.X, current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees, honesty = TRUE)
         prelim.GRF.varimp <- variable_importance(prelim.GRF)
         selected.vars <- which(prelim.GRF.varimp / mean(prelim.GRF.varimp) > 0.2)
   
       # Implement GRF
-        GRF <- causal_forest(X[,selected.vars], Y, W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees, 
+        GRF <- causal_forest(current.X[,selected.vars], current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees, 
                              honesty = TRUE, tune.parameters = c("sample.fraction", "mtry", "min.node.size", "honesty.fraction"))
         GRF.pred <- predict(GRF, estimate.variance = TRUE)
         GRF.CATE <- GRF.pred$predictions
@@ -138,8 +138,8 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
         diff.forest.pred.GRF <- c(GRF.BLP[2,1], GRF.BLP[2,2], (GRF.BLP[2,4] < 0.10))
     
       # Test of heterogeneity using Differential ATE
-        GRF.ATE.charact <- average_treatment_effect(GRF, target.sample = "all", subset = (characteristics == 1))
-        GRF.ATE.not.charact <- average_treatment_effect(GRF, target.sample = "all", subset = !(characteristics == 1))
+        GRF.ATE.charact <- average_treatment_effect(GRF, target.sample = "all", subset = (characteristic == 1))
+        GRF.ATE.not.charact <- average_treatment_effect(GRF, target.sample = "all", subset = !(characteristic == 1))
         # DiffATE.GRF.mean <- GRF.ATE.charact[1] - GRF.ATE.not.charact[1]
         # DiffATE.GRF.SE <- sqrt(GRF.ATE.charact[2]^2 + GRF.ATE.not.charact[2]^2)
         # lower.DiffATE.GRF <- (DiffATE.GRF.mean - (qnorm(0.975) * DiffATE.GRF.SE))
@@ -151,7 +151,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
     ############################
       
       # Select variables to include using preliminary Cluster-Robust GRF
-        prelim.CR.GRF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE, clusters = loangroups, num.trees = numtrees)
+        prelim.CR.GRF <- causal_forest(current.X, current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE, clusters = current.loangroups, num.trees = numtrees)
         prelim.CR.GRF.varimp <- variable_importance(prelim.CR.GRF)
         selected.vars <- which(prelim.CR.GRF.varimp / mean(prelim.CR.GRF.varimp) > 0.2)
   
@@ -159,7 +159,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
         CR.GRF.varimp <- variable_importance(forest.Y) 
               
       # Implement Cluster-Robust GRF
-        CR.GRF <- causal_forest(X[,selected.vars], Y, W, Y.hat = Y.hat, W.hat = W.hat, clusters = loangroups, honesty = TRUE, num.trees = numtrees, 
+        CR.GRF <- causal_forest(current.X[,selected.vars], current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, clusters = current.loangroups, honesty = TRUE, num.trees = numtrees, 
                                 tune.parameters = c("sample.fraction", "mtry", "min.node.size", "honesty.fraction"))
         CR.GRF.pred <- predict(CR.GRF, estimate.variance = TRUE)
         CR.GRF.CATE <- CR.GRF.pred$predictions
@@ -189,8 +189,8 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
         diff.forest.pred.CR.GRF <- c(CR.GRF.BLP[2,1], CR.GRF.BLP[2,2], (CR.GRF.BLP[2,4] < 0.10))
     
       # Test of heterogeneity using Differential ATE
-        CR.GRF.ATE.charact <- average_treatment_effect(CR.GRF, target.sample = "all", subset = (characteristics == 1))
-        CR.GRF.ATE.not.charact <- average_treatment_effect(CR.GRF, target.sample = "all", subset = !(characteristics == 1))
+        CR.GRF.ATE.charact <- average_treatment_effect(CR.GRF, target.sample = "all", subset = (characteristic == 1))
+        CR.GRF.ATE.not.charact <- average_treatment_effect(CR.GRF, target.sample = "all", subset = !(characteristic == 1))
         # DiffATE.CR.GRF.mean <- CR.GRF.ATE.charact[1] - CR.GRF.ATE.not.charact[1]
         # DiffATE.GRF.SE <- sqrt(GRF.ATE.charact[2]^2 + GRF.ATE.not.charact[2]^2)
         # lower.DiffATE.GRF <- (DiffATE.GRF.mean - (qnorm(0.975) * DiffATE.GRF.SE))
@@ -202,10 +202,10 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
     ############################
     
       # Grow preliminary forests for (W, X) and (Y, X) separately
-        forest.W <- ll_regression_forest(X, W, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, 
+        forest.W <- ll_regression_forest(current.X, current.W, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, 
                                          num.trees = numtrees, tune.parameters = "all")
         W.hat <- predict(forest.W)$predictions
-        forest.Y <- ll_regression_forest(X, Y, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, 
+        forest.Y <- ll_regression_forest(current.X, current.Y, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, 
                                          num.trees = numtrees, tune.parameters = "all")
         Y.hat <- predict(forest.Y)$predictions
     
@@ -213,16 +213,16 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
         LLCF.varimp <- variable_importance(forest.Y) 
               
       # Select variables to include using Lasso feature selection
-        lasso.mod <- cv.glmnet(X, Y, alpha = 1)
+        lasso.mod <- cv.glmnet(current.X, current.Y, alpha = 1)
         selected <- which(coef(lasso.mod) != 0)
         if(length(selected) < 2) {
-          selected <- 1:ncol(X)
+          selected <- 1:ncol(current.X)
         } else {
           selected <- selected[-1] - 1 # Remove intercept
         }
   
       # Implement LLCF
-        LLCF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, 
+        LLCF <- causal_forest(current.X, current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, 
                               num.trees = numtrees, tune.parameters = c("sample.fraction", "mtry", "min.node.size", "honesty.fraction"))
         LLCF.ATE <- average_treatment_effect(LLCF, target.sample = "all")
     
@@ -247,8 +247,8 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
         }
       
       # Test of heterogeneity using Differential ATE
-        LLCF.ATE.charact <- average_treatment_effect(LLCF, target.sample = "all", subset = (characteristics == 1))
-        LLCF.ATE.not.charact <- average_treatment_effect(LLCF, target.sample = "all", subset = !(characteristics == 1))
+        LLCF.ATE.charact <- average_treatment_effect(LLCF, target.sample = "all", subset = (characteristic == 1))
+        LLCF.ATE.not.charact <- average_treatment_effect(LLCF, target.sample = "all", subset = !(characteristic == 1))
         # DiffATE.LLCF.mean <- LLCF.ATE.charact[1] - LLCF.ATE.not.charact[1]
         # DiffATE.LLCF.SE <- sqrt(LLCF.ATE.charact[2]^2 + LLCF.ATE.not.charact[2]^2)
         # lower.DiffATE.LLCF <- (DiffATE.LLCF.mean - (qnorm(0.975) * DiffATE.LLCF.SE))
