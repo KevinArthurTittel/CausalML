@@ -140,11 +140,12 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
       # Test of heterogeneity using Differential ATE
         GRF.ATE.charact <- average_treatment_effect(GRF, target.sample = "all", subset = (characteristics == 1))
         GRF.ATE.not.charact <- average_treatment_effect(GRF, target.sample = "all", subset = !(characteristics == 1))
-        DiffATE.GRF.mean <- GRF.ATE.charact[1] - GRF.ATE.not.charact[1]
-        DiffATE.GRF.SE <- sqrt(GRF.ATE.charact[2]^2 + GRF.ATE.not.charact[2]^2)
-        lower.DiffATE.GRF <- (DiffATE.GRF.mean - (qnorm(0.975) * DiffATE.GRF.SE))
-        upper.DiffATE.GRF <- (DiffATE.GRF.mean + (qnorm(0.975) * DiffATE.GRF.SE))
-  
+        # DiffATE.GRF.mean <- GRF.ATE.charact[1] - GRF.ATE.not.charact[1]
+        # DiffATE.GRF.SE <- sqrt(GRF.ATE.charact[2]^2 + GRF.ATE.not.charact[2]^2)
+        # lower.DiffATE.GRF <- (DiffATE.GRF.mean - (qnorm(0.975) * DiffATE.GRF.SE))
+        # upper.DiffATE.GRF <- (DiffATE.GRF.mean + (qnorm(0.975) * DiffATE.GRF.SE))
+        DiffATE.GRF.test <- t.test(GRF.ATE.charact, GRF.ATE.not.charact, alternative = "two.sided", var.equal = FALSE)
+        
     ############################
     #### Cluster-Robust GRF ####
     ############################
@@ -190,10 +191,11 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
       # Test of heterogeneity using Differential ATE
         CR.GRF.ATE.charact <- average_treatment_effect(CR.GRF, target.sample = "all", subset = (characteristics == 1))
         CR.GRF.ATE.not.charact <- average_treatment_effect(CR.GRF, target.sample = "all", subset = !(characteristics == 1))
-        DiffATE.CR.GRF.mean <- CR.GRF.ATE.charact[1] - CR.GRF.ATE.not.charact[1]
-        DiffATE.CR.GRF.SE <- sqrt(CR.GRF.ATE.charact[2]^2 + CR.GRF.ATE.not.charact[2]^2)
-        lower.DiffATE.CR.GRF <- (DiffATE.CR.GRF.mean - (qnorm(0.975) * DiffATE.CR.GRF.SE))
-        upper.DiffATE.CR.GRF <- (DiffATE.CR.GRF.mean + (qnorm(0.975) * DiffATE.CR.GRF.SE))
+        # DiffATE.CR.GRF.mean <- CR.GRF.ATE.charact[1] - CR.GRF.ATE.not.charact[1]
+        # DiffATE.GRF.SE <- sqrt(GRF.ATE.charact[2]^2 + GRF.ATE.not.charact[2]^2)
+        # lower.DiffATE.GRF <- (DiffATE.GRF.mean - (qnorm(0.975) * DiffATE.GRF.SE))
+        # upper.DiffATE.GRF <- (DiffATE.GRF.mean + (qnorm(0.975) * DiffATE.GRF.SE))
+        DiffATE.CR.GRF.test <- t.test(CR.GRF.ATE.charact, CR.GRF.ATE.not.charact, alternative = "two.sided", var.equal = FALSE)
   
     ############################
     ########### LLCF ###########
@@ -247,27 +249,37 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
       # Test of heterogeneity using Differential ATE
         LLCF.ATE.charact <- average_treatment_effect(LLCF, target.sample = "all", subset = (characteristics == 1))
         LLCF.ATE.not.charact <- average_treatment_effect(LLCF, target.sample = "all", subset = !(characteristics == 1))
-        DiffATE.LLCF.mean <- LLCF.ATE.charact[1] - LLCF.ATE.not.charact[1]
-        DiffATE.LLCF.SE <- sqrt(LLCF.ATE.charact[2]^2 + LLCF.ATE.not.charact[2]^2)
-        lower.DiffATE.LLCF <- (DiffATE.LLCF.mean - (qnorm(0.975) * DiffATE.LLCF.SE))
-        upper.DiffATE.LLCF <- (DiffATE.LLCF.mean + (qnorm(0.975) * DiffATE.LLCF.SE))
+        # DiffATE.LLCF.mean <- LLCF.ATE.charact[1] - LLCF.ATE.not.charact[1]
+        # DiffATE.LLCF.SE <- sqrt(LLCF.ATE.charact[2]^2 + LLCF.ATE.not.charact[2]^2)
+        # lower.DiffATE.LLCF <- (DiffATE.LLCF.mean - (qnorm(0.975) * DiffATE.LLCF.SE))
+        # upper.DiffATE.LLCF <- (DiffATE.LLCF.mean + (qnorm(0.975) * DiffATE.LLCF.SE))
+        DiffATE.LLCF.test <- t.test(LLCF.ATE.charact, LLCF.ATE.not.charact, alternative = "two.sided", var.equal = FALSE)
 
         results_BLP <- data.frame(t(c(mean.forest.pred.GRF, diff.forest.pred.GRF, 
                          mean.forest.pred.CR.GRF, diff.forest.pred.CR.GRF, 
                          mean.forest.pred.LLCF, diff.forest.pred.LLCF)))
     
-        results_DiffATE <- data.frame(t(c(paste(round(DiffATE.GRF.mean, 3), "(", round(DiffATE.GRF.SE, 3), ")"),
-                             paste(round(DiffATE.CR.GRF.mean, 3), "(", round(DiffATE.CR.GRF.SE, 3), ")"),
-                             paste(round(DiffATE.LLCF.mean, 3), "(", round(DiffATE.LLCF.SE, 3), ")")), (845 - sum(missingvalues))))   
+        results_DiffATE <- data.frame(t(c(paste(round(GRF.ATE.charact[1], 3), "(", round(GRF.ATE.charact[2], 3), ")"),
+                                          paste(round(GRF.ATE.not.charact[1], 3), "(", round(GRF.ATE.not.charact[2], 3), ")"),
+                                          paste(round(DiffATE.GRF.test$p.value, 3)),
+                                          paste(round(CR.GRF.ATE.charact[1], 3), "(", round(CR.GRF.ATE.charact[2], 3), ")"),
+                                          paste(round(CR.GRF.ATE.not.charact[1], 3), "(", round(CR.GRF.ATE.not.charact[2], 3), ")"),
+                                          paste(round(DiffATE.CR.GRF.test$p.value, 3)),
+                                          paste(round(LLCF.ATE.charact[1], 3), "(", round(LLCF.ATE.charact[2], 3), ")"),
+                                          paste(round(LLCF.ATE.not.charact[1], 3), "(", round(LLCF.ATE.not.charact[2], 3), ")"),
+                                          paste(round(DiffATE.LLCF.test$p.value, 3)),
+                                          (845 - sum(missingvalues))))   
     
-        data.frame(cbind(results_ATE, results_AUTOC, results_BLP, results_DiffATE)
+        data.frame(cbind(results_BLP, results_DiffATE)
     })
     results_BLP <- basic.results[,1:6]        
     colnames(results_BLP) <- c("BLP[1] GRF", "BLP[2] GRF", "BLP[1] CR.GRF", "BLP[2] CR.GRF", "BLP[1] LLCF", "BLP[2] LLCF")
     rownames(results_BLP) <- c("savings", "risk loving", "wage earner", "household member chronically ill", "impatient")   
     
     results_DiffATE <- basic.results[,7:10]                                    
-    colnames(results_DiffATE) <- c("Differential ATE GRF", "Differential ATE CR.GRF", "Differential ATE LLCF", "Number of observations")
+    colnames(results_DiffATE) <- c("GRF CATE subgroup", "GRF CATE rest", "GRF p-value difference", 
+                                   "CR.GRF CATE subgroup", "CR.GRF CATE rest", "CR.GRF p-value difference",
+                                   "LLCF CATE subgroup", "LLCF CATE rest", "LLCF p-value difference", "Number of observations")
     rownames(results_DiffATE) <- c("savings", "risk loving", "wage earner", "household member chronically ill", "impatient")
     
     results = list("results_BLP" = results_BLP, 
