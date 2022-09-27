@@ -5,6 +5,7 @@ library(Hmisc)
 library(ggplot2)
 library(standardize)
 library(foreign)
+library(stats)
 library(haven)
 
 # Import and prepare Microfinance data set (Field et al., 2013)
@@ -234,6 +235,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
           lines(current.X[,colnames(characteristic)], lower.CR.GRF, col = 1, lty = 2)
           lines(current.X[,colnames(characteristic)], pmax(0, current.X[,colnames(characteristic)], col = 2, lty = 2)
          }
+         
     ############################
     ########### LLCF ###########
     ############################
@@ -262,7 +264,6 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
       # Implement LLCF
         LLCF <- causal_forest(current.X, current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, 
                               num.trees = numtrees, tune.parameters = c("sample.fraction", "mtry", "min.node.size", "honesty.fraction"))
-        LLCF.ATE <- average_treatment_effect(LLCF, target.sample = "all")
     
         if (boolean.lambdas == FALSE) {
           # Predict: tuning without grid search over lambdas
