@@ -224,7 +224,6 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
       # Implement LLCF
         LLCF <- causal_forest(current.X, current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, 
                               num.trees = numtrees, tune.parameters = c("sample.fraction", "mtry", "min.node.size", "honesty.fraction"))
-        LLCF.ATE <- average_treatment_effect(LLCF, target.sample = "all")
     
         if (boolean.lambdas == FALSE) {
           # Predict: tuning without grid search over lambdas
