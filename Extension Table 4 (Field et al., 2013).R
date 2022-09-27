@@ -208,7 +208,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
         lasso.mod <- cv.glmnet(current.X, current.Y, alpha = 1)
         selected <- which(coef(lasso.mod) != 0)
         if(length(selected) < 2) {
-          selected <- 1:ncol(X)
+          selected <- 1:ncol(current.X)
         } else {
           selected <- selected[-1] - 1 # Remove intercept
         }
