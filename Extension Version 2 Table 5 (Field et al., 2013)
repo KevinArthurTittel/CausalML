@@ -352,7 +352,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
     colnames(results_BLP) <- c("BLP[1] GRF", "BLP[2] GRF", "BLP[1] CR.GRF", "BLP[2] CR.GRF", "BLP[1] LLCF", "BLP[2] LLCF")
     rownames(results_BLP) <- c("savings", "risk loving", "wage earner", "household member chronically ill", "impatient")   
     
-    results_DiffATE <- basic.results[,7:10]                                    
+    results_DiffATE <- basic.results[,7:17]                                    
     colnames(results_DiffATE) <- c("GRF CATE subgroup", "GRF CATE rest", "GRF p-value difference", 
                                    "CR.GRF CATE subgroup", "CR.GRF CATE rest", "CR.GRF p-value difference",
                                    "LLCF CATE subgroup", "LLCF CATE rest", "LLCF p-value difference", "Number of observations")
