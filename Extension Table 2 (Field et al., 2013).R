@@ -142,7 +142,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
     ############################
   
      # Select variables to include using preliminary Cluster-Robust GRF
-        prelim.CR.GRF <- causal_forest(current.X, current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE, clusters = loangroups, num.trees = numtrees)
+        prelim.CR.GRF <- causal_forest(current.X, current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE, clusters = current.loangroups, num.trees = numtrees)
         prelim.CR.GRF.varimp <- variable_importance(prelim.CR.GRF)
         selected.vars <- which(prelim.CR.GRF.varimp / mean(prelim.CR.GRF.varimp) > 0.2)
 
@@ -150,7 +150,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
         CR.GRF.varimp <- variable_importance(forest.Y) 
               
       # Implement Cluster-Robust GRF
-        CR.GRF <- causal_forest(current.X[,selected.vars], current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, clusters = loangroups, honesty = TRUE, num.trees = numtrees, 
+        CR.GRF <- causal_forest(current.X[,selected.vars], current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, clusters = current.loangroups, honesty = TRUE, num.trees = numtrees, 
                                 tune.parameters = c("sample.fraction", "mtry", "min.node.size", "honesty.fraction"))
         CR.GRF.pred <- predict(CR.GRF, estimate.variance = TRUE)
         CR.GRF.CATE <- CR.GRF.pred$predictions
@@ -207,7 +207,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
         lasso.mod <- cv.glmnet(current.X, current.Y, alpha = 1)
         selected <- which(coef(lasso.mod) != 0)
         if(length(selected) < 2) {
-          selected <- 1:ncol(X)
+          selected <- 1:ncol(current.X)
         } else {
           selected <- selected[-1] - 1 # Remove intercept
         }
