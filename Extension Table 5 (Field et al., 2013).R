@@ -246,6 +246,29 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
             }
         }
       
+      # Find lower and upper bounds for 95% confidence intervals
+        lower.LLCF <- LLCF.CATE - qnorm(0.975)*LLCF.CATE.SE
+        upper.LLCF <- LLCF.CATE + qnorm(0.975)*LLCF.CATE.SE
+      
+      # Graph the predicted Cluster-Robust GRF heterogeneous treatment effect estimates
+        if (boolean.plot == TRUE) {
+          hist(LLCF.CATE)
+        }
+    
+      # Compute ATE with corresponding 95% confidence intervals
+        LLCF.ATE <- average_treatment_effect(LLCF, target.sample = "all")
+    
+      # See if the Cluster-Robust GRF succeeded in capturing heterogeneity by plotting the TOC and calculating the 95% confidence interval for the AUTOC
+        LLCF.rate <- rank_average_treatment_effect(LLCF, LLCF.CATE, target = "AUTOC")
+        if (boolean.plot == TRUE) {
+          plot(LLCF.rate)
+        }
+  
+      # Assessing Cluster-Robust GRF fit using the Best Linear Predictor Approach [BLP]
+        LLCF.BLP <- test_calibration(LLCF)
+        mean.forest.pred.LLCF <- c(LLCF.BLP[1,1], LLCF.BLP[1,2], (LLCF.BLP[1,4] < 0.10))
+        diff.forest.pred.LLCF <- c(LLCF.BLP[2,1], LLCF.BLP[2,2], (LLCF.BLP[2,4] < 0.10))
+    
       # Test of heterogeneity using Differential ATE
         LLCF.ATE.charact <- average_treatment_effect(LLCF, target.sample = "all", subset = (characteristic == 1))
         LLCF.ATE.not.charact <- average_treatment_effect(LLCF, target.sample = "all", subset = !(characteristic == 1))
