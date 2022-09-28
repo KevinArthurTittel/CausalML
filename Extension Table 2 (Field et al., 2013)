@@ -6,6 +6,7 @@ library(ggplot2)
 library(standardize)
 library(foreign)
 library(haven)
+library(glmnet)
 
 # Import and prepare Microfinance data set (Field et al., 2013)
   Grace_Period_Data <- read_dta("Downloads/112672-V1/Grace-Period-Data.dta")
