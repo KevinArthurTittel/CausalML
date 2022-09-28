@@ -44,7 +44,7 @@ set.seed(123)
                         loansize5, loansize6)
 
   # Combine all the control covariates in one large matrix
-    X <- as.matrix(cbind(X, loansizematrix, characteristicsmatrix))
+    X <- as.matrix(cbind(X, loansizematrix))
 
 # Initialize parameters
   numtrees <- 2000
