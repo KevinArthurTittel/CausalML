@@ -16,7 +16,7 @@ library(haven)
     W <- as.vector(W)
 
   # Create a numerical vector of the character group name vector
-    loangroups <- as.numeric(factor(Grace_Period_Data$sec_group_name))
+    # loangroups <- as.numeric(factor(Grace_Period_Data$sec_group_name))
 
   # Standardize the continuous variables
     Grace_Period_Data$Years_Education_C <- scale(Grace_Period_Data$Years_Education_C)
@@ -25,7 +25,10 @@ library(haven)
     Grace_Period_Data$HH_Size_C <- scale(Grace_Period_Data$HH_Size_C)
 
   # Appoint the control variables matrix
-    X <- Grace_Period_Data[,8:18]
+    X <- Grace_Period_Data[,c(6,8:18,31:35)]
+    colnames(X) <- c("Stratification.Dummies", "Age", "Married", "Literate", "Muslim", "HH.Size", "Years.Education", "Shock", "Has.Business",
+                 "Financial.Control", "Home.Owner", "No.Drain", "Business.Abroad", "Lost.Days", "Money.Shock",
+                 "Client.Manages", "SEI")
 
   # Create loan group dummies (as in original analysis) to be added to control variables matrix
     loansize1 <- as.integer(c(Grace_Period_Data$sec_loanamount == 4000))
@@ -36,6 +39,7 @@ library(haven)
     loansize6 <- as.integer(c(Grace_Period_Data$sec_loanamount == 10000))
     loansizematrix <- cbind(loansize1, loansize2, loansize3, loansize4,
                         loansize5, loansize6)
+    loangroups <- Grace_Period_Data$sec_loanamount
 
   # Create stratification dummies (fixed effects) to be added to control variables matrix
     stratifgroup1 <- as.integer(c(Grace_Period_Data$Stratification_Dummies == 1))
@@ -58,10 +62,10 @@ library(haven)
 
   # Combine all the control covariates in one large matrix
     # X <- as.matrix(cbind(X, stratifmatrix, loansizematrix, loanofficermatrix))
-    X <- as.matrix(cbind(X, loansizematrix))
+    X <- as.matrix(X)
 
 # Initialize parameters
-  numtrees <- 2000
+  numtrees <- 4000
   index <- c(1:12)
   lambdas <- c(0, 0.1, 0.3, 0.5, 0.7, 1, 1.5)
   boolean.lambdas <- FALSE
@@ -214,14 +218,14 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
     
         if (boolean.lambdas == FALSE) {
           # Predict: tuning without grid search over lambdas
-            LLCF.pred <- predict(LLCF, linear.correction.variables = selected, ll.weight.penalty = TRUE, estimate.variance = TRUE)
+            LLCF.pred <- predict(LLCF, linear.correction.variables = c(2,6,7), ll.weight.penalty = TRUE, estimate.variance = TRUE)
             LLCF.CATE <- LLCF.pred$predictions
             LLCF.CATE.SE <- sqrt(LLCF.pred$variance.estimates)
         } else {
           # Predict: tuning done using set of lambdas
             LLCF.mse.old <- +Inf
             for (l in length(lambdas)) {
-              LLCF.CATE.old <- predict(LLCF, linear.correction.variables = selected, ll.lambda = lambdas[l], ll.weight.penalty = TRUE, estimate.variance = TRUE)
+              LLCF.CATE.old <- predict(LLCF, linear.correction.variables = c(2,6,7), ll.lambda = lambdas[l], ll.weight.penalty = TRUE, estimate.variance = TRUE)
               predictions <- LLCF.CATE.old$predictions
               LLCF.mse.new <- mean((predictions - mean(predictions))**2)
               if (LLCF.mse.new < LLCF.mse.old) {
