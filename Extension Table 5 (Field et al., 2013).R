@@ -25,7 +25,9 @@ library(haven)
     Grace_Period_Data$HH_Size_C <- scale(Grace_Period_Data$HH_Size_C)
 
   # Appoint the control variables matrix
-    X <- Grace_Period_Data[,8:18]
+    X <- Grace_Period_Data[,c(2,6,8:18)]
+    colnames(X) <- c("Loan.Officer", "Stratification", "Age", "Married", "Literate", "Muslim", "HH.Size", "Years.Education", "Shock", "Has.Business",
+                 "Financial.Control", "Home.Owner", "No.Drain")
 
   # Create loan group dummies (as in original analysis) to be added to control variables matrix
     loansize1 <- as.integer(c(Grace_Period_Data$sec_loanamount == 4000))
@@ -37,27 +39,7 @@ library(haven)
     loansizematrix <- cbind(loansize1, loansize2, loansize3, loansize4,
                         loansize5, loansize6)
 
-  # Create stratification dummies (fixed effects) to be added to control variables matrix
-    stratifgroup1 <- as.integer(c(Grace_Period_Data$Stratification_Dummies == 1))
-    stratifgroup2 <- as.integer(c(Grace_Period_Data$Stratification_Dummies == 2))
-    stratifgroup3 <- as.integer(c(Grace_Period_Data$Stratification_Dummies == 3))
-    stratifgroup4 <- as.integer(c(Grace_Period_Data$Stratification_Dummies == 4))
-    stratifgroup5 <- as.integer(c(Grace_Period_Data$Stratification_Dummies == 5))
-    stratifgroup6 <- as.integer(c(Grace_Period_Data$Stratification_Dummies == 6))
-    stratifmatrix <- cbind(stratifgroup1, stratifgroup2, stratifgroup3, 
-                       stratifgroup4, stratifgroup5, stratifgroup6)
-
-  # Create loan officer dummies (fixed effects) to be added to control variables matrix
-    loanofficergroup1 <- as.integer(c(Grace_Period_Data$sec_loan_officer == 1))
-    loanofficergroup2 <- as.integer(c(Grace_Period_Data$sec_loan_officer == 3))
-    loanofficergroup3 <- as.integer(c(Grace_Period_Data$sec_loan_officer == 4))
-    loanofficergroup4 <- as.integer(c(Grace_Period_Data$sec_loan_officer == 7))
-    loanofficergroup5 <- as.integer(c(Grace_Period_Data$sec_loan_officer == 8))
-    loanofficermatrix <- cbind(loanofficergroup1, loanofficergroup2, loanofficergroup3, 
-                           loanofficergroup4, loanofficergroup5)
-
   # Combine all the control covariates in one large matrix
-    # X <- as.matrix(cbind(X, stratifmatrix, loansizematrix, loanofficermatrix))
     X <- as.matrix(cbind(X, loansizematrix))
 
 # Initialize parameters
@@ -109,7 +91,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
   
       # Implement GRF
         GRF <- causal_forest(current.X[,selected.vars], current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees, 
-                             honesty = TRUE, tune.parameters = c("sample.fraction", "mtry", "min.node.size", "honesty.fraction"))
+                             honesty = TRUE, tune.parameters = "all")
         GRF.pred <- predict(GRF, estimate.variance = TRUE)
         GRF.CATE <- GRF.pred$predictions
         GRF.CATE.SE <- sqrt(GRF.pred$variance.estimates)
@@ -160,7 +142,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
               
       # Implement Cluster-Robust GRF
         CR.GRF <- causal_forest(current.X[,selected.vars], current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, clusters = current.loangroups, honesty = TRUE, num.trees = numtrees, 
-                                tune.parameters = c("sample.fraction", "mtry", "min.node.size", "honesty.fraction"))
+                                tune.parameters = "all")
         CR.GRF.pred <- predict(CR.GRF, estimate.variance = TRUE)
         CR.GRF.CATE <- CR.GRF.pred$predictions
         CR.GRF.CATE.SE <- sqrt(CR.GRF.pred$variance.estimates)
@@ -203,10 +185,10 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
     
       # Grow preliminary forests for (W, X) and (Y, X) separately
         forest.W <- ll_regression_forest(current.X, current.W, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, 
-                                         num.trees = numtrees, tune.parameters = "all")
+                                         num.trees = numtrees)
         W.hat <- predict(forest.W)$predictions
         forest.Y <- ll_regression_forest(current.X, current.Y, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, 
-                                         num.trees = numtrees, tune.parameters = "all")
+                                         num.trees = numtrees)
         Y.hat <- predict(forest.Y)$predictions
     
       # Compute the variable importance
@@ -222,8 +204,8 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
         }
   
       # Implement LLCF
-        LLCF <- causal_forest(current.X, current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, 
-                              num.trees = numtrees, tune.parameters = c("sample.fraction", "mtry", "min.node.size", "honesty.fraction"))
+        LLCF <- causal_forest(current.X, current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE,  
+                              num.trees = numtrees, tune.parameters = "all")
     
         if (boolean.lambdas == FALSE) {
           # Predict: tuning without grid search over lambdas
@@ -239,7 +221,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
               LLCF.mse.new <- mean((predictions - mean(predictions))**2)
               if (LLCF.mse.new < LLCF.mse.old) {
                 LLCF.mse.old <- LLCF.mse.new
-                LLCF.CATE.SE <- sqrt(LLCF.CATE.old$variance.estimates))
+                LLCF.CATE.SE <- sqrt(LLCF.CATE.old$variance.estimates)
                 LLCF.CATE <- predictions
               }
             }
@@ -277,22 +259,20 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
         # upper.DiffATE.LLCF <- (DiffATE.LLCF.mean + (qnorm(0.975) * DiffATE.LLCF.SE))
         DiffATE.LLCF.test <- t.test(LLCF.ATE.charact, LLCF.ATE.not.charact, alternative = "two.sided", var.equal = FALSE)
 
-        results_BLP <- data.frame(t(c(mean.forest.pred.GRF, diff.forest.pred.GRF, 
+        data.frame(t(c(mean.forest.pred.GRF, diff.forest.pred.GRF, 
                          mean.forest.pred.CR.GRF, diff.forest.pred.CR.GRF, 
-                         mean.forest.pred.LLCF, diff.forest.pred.LLCF)))
-    
-        results_DiffATE <- data.frame(t(c(paste(round(GRF.ATE.charact[1], 3), "(", round(GRF.ATE.charact[2], 3), ")"),
-                                          paste(round(GRF.ATE.not.charact[1], 3), "(", round(GRF.ATE.not.charact[2], 3), ")"),
-                                          paste(round(DiffATE.GRF.test$p.value, 3)),
-                                          paste(round(CR.GRF.ATE.charact[1], 3), "(", round(CR.GRF.ATE.charact[2], 3), ")"),
-                                          paste(round(CR.GRF.ATE.not.charact[1], 3), "(", round(CR.GRF.ATE.not.charact[2], 3), ")"),
-                                          paste(round(DiffATE.CR.GRF.test$p.value, 3)),
-                                          paste(round(LLCF.ATE.charact[1], 3), "(", round(LLCF.ATE.charact[2], 3), ")"),
-                                          paste(round(LLCF.ATE.not.charact[1], 3), "(", round(LLCF.ATE.not.charact[2], 3), ")"),
-                                          paste(round(DiffATE.LLCF.test$p.value, 3)),
-                                          (845 - sum(missingvalues))))   
-    
-        data.frame(cbind(results_BLP, results_DiffATE)
+                         mean.forest.pred.LLCF, diff.forest.pred.LLCF,
+                          paste(round(GRF.ATE.charact[1], 3), "(", round(GRF.ATE.charact[2], 3), ")"),
+                          paste(round(GRF.ATE.not.charact[1], 3), "(", round(GRF.ATE.not.charact[2], 3), ")"),
+                          paste(round(DiffATE.GRF.test$p.value, 3)),
+                          paste(round(CR.GRF.ATE.charact[1], 3), "(", round(CR.GRF.ATE.charact[2], 3), ")"),
+                          paste(round(CR.GRF.ATE.not.charact[1], 3), "(", round(CR.GRF.ATE.not.charact[2], 3), ")"),
+                          paste(round(DiffATE.CR.GRF.test$p.value, 3)),
+                          paste(round(LLCF.ATE.charact[1], 3), "(", round(LLCF.ATE.charact[2], 3), ")"),
+                          paste(round(LLCF.ATE.not.charact[1], 3), "(", round(LLCF.ATE.not.charact[2], 3), ")"),
+                          paste(round(DiffATE.LLCF.test$p.value, 3)),
+                          (845 - sum(missingvalues))))
+
     })
     results_BLP <- basic.results[,1:6]        
     colnames(results_BLP) <- c("BLP[1] GRF", "BLP[2] GRF", "BLP[1] CR.GRF", "BLP[2] CR.GRF", "BLP[1] LLCF", "BLP[2] LLCF")
