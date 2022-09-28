@@ -199,4 +199,4 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
 }
 
 results = run_method(numtrees, index, lambdas, boolean.plot, boolean.lambdas)
-write.csv(results[["results_ATE", file = "Table 3 (Field et al., 2013).xlsx")
+write.csv(results[["results_ATE"]], file = "Table 3 (Field et al., 2013).xlsx")
