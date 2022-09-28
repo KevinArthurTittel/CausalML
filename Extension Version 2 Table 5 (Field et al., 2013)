@@ -69,9 +69,9 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
       
     # Appoint final X-matrix
       if (version == 1) {
-        current.X <- as.matrix(cbind(X, characteristic)
+        current.X <- as.matrix(cbind(X, characteristic))
       } else {
-        current.X <- as.matrix(cbind(X, X[,75:79])
+        current.X <- as.matrix(cbind(X, X[,75:79]))
       }
       
     # Determine missing values
@@ -151,7 +151,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
               X.median <- apply(current.X, 2, median)
               
             # Create ordered vector of important variable
-              important.var.test = seq(min(current.X$(GRF.mostimportant[k])), max(current.X$(GRF.mostimportant[k])))
+              important.var.test = seq(min(current.X$GRF.mostimportant[k]), max(current.X$GRF.mostimportant[k]))
               
             # Create test set
               X.test <- matrix(rep(X.median, length(important.var.test)), length(important.var.test), byrow = TRUE)
@@ -234,7 +234,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
               X.median <- apply(current.X, 2, median)
               
             # Create ordered vector of important variable
-              important.var.test = seq(min(current.X$(CR.GRF.mostimportant[k])), max(current.X$(CR.GRF.mostimportant[k])))
+              important.var.test = seq(min(current.X$CR.GRF.mostimportant[k]), max(current.X$CR.GRF.mostimportant[k]))
               
             # Create test set
               X.test <- matrix(rep(X.median, length(important.var.test)), length(important.var.test), byrow = TRUE)
@@ -301,7 +301,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
               LLCF.mse.new <- mean((predictions - mean(predictions))**2)
               if (LLCF.mse.new < LLCF.mse.old) {
                 LLCF.mse.old <- LLCF.mse.new
-                LLCF.CATE.SE <- sqrt(LLCF.CATE.old$variance.estimates))
+                LLCF.CATE.SE <- sqrt(LLCF.CATE.old$variance.estimates)
                 LLCF.CATE <- predictions
               }
             }
@@ -346,7 +346,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
               X.median <- apply(current.X, 2, median)
               
             # Create ordered vector of important variable
-              important.var.test = seq(min(current.X$(LLCF.mostimportant[k])), max(current.X$(LLCF.mostimportant[k])))
+              important.var.test = seq(min(current.X$LLCF.mostimportant[k]), max(current.X$LLCF.mostimportant[k]))
               
             # Create test set
               X.test <- matrix(rep(X.median, length(important.var.test)), length(important.var.test), byrow = TRUE)
@@ -386,11 +386,11 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
     
         data.frame(cbind(results_BLP, results_DiffATE))
     })
-    results_BLP <- basic.results[,1:6]        
+    results_BLP <- t(basic.results[,1:6])   
     colnames(results_BLP) <- c("BLP[1] GRF", "BLP[2] GRF", "BLP[1] CR.GRF", "BLP[2] CR.GRF", "BLP[1] LLCF", "BLP[2] LLCF")
     rownames(results_BLP) <- c("savings", "risk loving", "wage earner", "household member chronically ill", "impatient")   
     
-    results_DiffATE <- basic.results[,7:17]                                    
+    results_DiffATE <- t(basic.results[,7:17])                                    
     colnames(results_DiffATE) <- c("GRF CATE subgroup", "GRF CATE rest", "GRF p-value difference", 
                                    "CR.GRF CATE subgroup", "CR.GRF CATE rest", "CR.GRF p-value difference",
                                    "LLCF CATE subgroup", "LLCF CATE rest", "LLCF p-value difference", "Number of observations")
