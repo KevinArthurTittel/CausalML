@@ -271,7 +271,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
                           paste(round(LLCF.ATE.charact[1], 3), "(", round(LLCF.ATE.charact[2], 3), ")"),
                           paste(round(LLCF.ATE.not.charact[1], 3), "(", round(LLCF.ATE.not.charact[2], 3), ")"),
                           paste(round(DiffATE.LLCF.test$p.value, 3)),
-                          (845 - sum(missingvalues))))
+                          (845 - sum(missingvalues)))))
 
     })
     results_BLP <- t(basic.results[,1:6])        
