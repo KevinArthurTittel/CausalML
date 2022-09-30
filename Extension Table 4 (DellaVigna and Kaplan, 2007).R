@@ -24,12 +24,12 @@ library(glmnet)
   # Appoint the control variables matrix
     demographic.controls.2000 <- Fox_News_Data[,c(37:49)]
     colnames(demographic.controls.2000) <- c("Population2000", "Population2000Over18", "HighSchoolFraction2000", "SomeCollegeFraction2000",
-                 "CollegeGraduatesFraction2000", "MalesFraction2000", "BlackFraction2000", "HispanicsFraction2000",
+                 "CollegeGraduatesFraction2000", "MalesFraction2000", "AfricanAmericanFraction2000", "HispanicsFraction2000",
                  "EmploymentFraction2000", "UnemploymentRate2000", "MarriedFraction2000", "Income2000", "ShareUrban2000")
 
     demographic.controls.Diff19962000 <- Fox_News_Data[,c(139:150)]
     colnames(demographic.controls.Diff19962000) <- c("PopulationDiff19962000", "SomeCollegeFractionDiff19962000", "SomeCollegeFractionDiff19962000",
-                 "CollegeGraduatesDiff19962000", "MalesFractionDiff19962000", "BlackFractionDiff19962000",
+                 "CollegeGraduatesDiff19962000", "MalesFractionDiff19962000", "AfricanAmericanFractionDiff19962000",
                  "HispanicsFractionDiff19962000", "EmploymentFractionDiff19962000", "UnemploymentRateDiff19962000",
                  "MarriedFractionDiff19962000", "IncomeDiff19962000", "ShareUrbanDiff19962000")
 
