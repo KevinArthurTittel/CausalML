@@ -68,6 +68,9 @@ library(glmnet)
   boolean.lambdas <- FALSE
   boolean.plot <- FALSE
   set.seed(123)
+  filename.plot.GRF.CATE <- "GRF CATE .pdf"
+  filename.plot.CR.GRF.CATE <- "CR.GRF CATE .pdf"
+  filename.plot.LLCF.CATE <- "LLCF CATE .pdf"
 
 # Estimation procedure
 run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
@@ -234,7 +237,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
               
             # Create test set
               X.test <- matrix(rep(X.median, length(important.var.test)), length(important.var.test), byrow = TRUE)
-              X.test[,(CR.GRF.mostimportant[k])] = important.var.test
+              X.test[,1] = important.var.test
               
             # Predict new CATE estimates
               CR.GRF.pred.test <- predict(CR.GRF, X.test, estimate.variance = TRUE)
@@ -350,7 +353,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
               
             # Create test set
               X.test <- matrix(rep(X.median, length(important.var.test)), length(important.var.test), byrow = TRUE)
-              X.test[,(LLCF.mostimportant[k])] = important.var.test
+              X.test[,1] = important.var.test
               
             # Predict new CATE estimates
               LLCF.pred.test <- predict(LLCF, X.test, estimate.variance = TRUE)
