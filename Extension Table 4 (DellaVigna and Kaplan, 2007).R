@@ -51,6 +51,9 @@ library(glmnet)
     remaining.variables <- Fox_News_Data[,c(14,59, 204, 205)]
     colnames(remaining.variables) <- c("No. cable channels available", "NumberPotentialSubscribers", "Swing district", "Republican district")
 
+    combined.X <- as.matrix(cbind(X, remaining.variables))
+    colnames(combined.X) <- c(colnames(X), colnames(remaining.variables))         
+
   # Clean the data
     indices <- (Fox_News_Data$sample12000 == 1)
     Y <- Y[indices]
@@ -82,8 +85,8 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
         
       # Compute the variable importance
         GRF.varimp <- variable_importance(forest.Y) 
-        GRF.mostimportant <- colnames(X)[order(GRF.varimp)[1:4]] # 4 most important variables for splitting
-        GRF.mostimportant <- c(GRF.mostimportant, colnames(characteristic))
+        GRF.varimp.ordered <- order(GRF.varimp)
+        GRF.mostimportant <- colnames(X)[GRF.varimp.ordered[1:4]] # 4 most important variables for splitting
         
       # Select variables to include using preliminary GRF
         prelim.GRF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees, honesty = TRUE)
@@ -119,16 +122,19 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
         GRF.BLP <- test_calibration(GRF)
     
       # Test of heterogeneity using Differential ATE along each and every variable
-        
-        
-      # Test of heterogeneity using Differential ATE
-        GRF.ATE.charact <- average_treatment_effect(GRF, target.sample = "all", subset = (characteristic == 1))
-        GRF.ATE.not.charact <- average_treatment_effect(GRF, target.sample = "all", subset = !(characteristic == 1))
-        # DiffATE.GRF.mean <- GRF.ATE.charact[1] - GRF.ATE.not.charact[1]
-        # DiffATE.GRF.SE <- sqrt(GRF.ATE.charact[2]^2 + GRF.ATE.not.charact[2]^2)
-        # lower.DiffATE.GRF <- (DiffATE.GRF.mean - (qnorm(0.975) * DiffATE.GRF.SE))
-        # upper.DiffATE.GRF <- (DiffATE.GRF.mean + (qnorm(0.975) * DiffATE.GRF.SE))
-        DiffATE.GRF.test <- t.test(GRF.ATE.charact, GRF.ATE.not.charact, alternative = "two.sided", var.equal = FALSE)
+        combined.X.median <- apply(combined.X, 2, median)
+        results_DiffATE_GRF = sapply(c(1:ncol(combined.X)), function(k) {
+          GRF.ATE.abovemedian <- average_treatment_effect(GRF, target.sample = "all", subset = (combined.X[,k] >= combined.X.median[k]))
+          GRF.ATE.belowmedian <- average_treatment_effect(GRF, target.sample = "all", subset = (combined.X[,k] < combined.X.median[k]))
+          GRF.AIPW.abovemedian <- get_scores(GRF, subset = (combined.X[,k] >= combined.X.median[k]))
+          GRF.AIPW.belowmedian <- get_scores(GRF, subset = (combined.X[,k] < combined.X.median[k]))
+          DiffATE.GRF.test <- t.test(GRF.AIPW.abovemedian, GRF.AIPW.belowmedian, alternative = "two.sided", var.equal = FALSE)
+          data.frame(t(c(paste(round(GRF.ATE.belowmedian[1], 3), "(", round(GRF.ATE.belowmedian[2], 3), ")"),
+                         paste(round(GRF.ATE.abovemedian[1], 3), "(", round(GRF.ATE.abovemedian[2], 3), ")"),
+                         paste(round(DiffATE.GRF.test$p.value, 3)))))
+        }
+        colnames(results_DiffATE_GRF) <- c("GRF CATE below median", "GRF CATE above median", "GRF p-value difference")
+        rownames(results_DiffATE_GRF) <- colnames(combined.X)                           
         
       # Plot the estimated CATE against the covariates with the highest variable importance, and the characteristic vector
         if (boolean.plot == TRUE) {
@@ -171,8 +177,8 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
   
       # Compute the variable importance
         CR.GRF.varimp <- variable_importance(forest.Y) 
-        CR.GRF.mostimportant <- colnames(X)[order(CR.GRF.varimp)[1:4]] # 4 most important variables for splitting
-        CR.GRF.mostimportant <- c(CR.GRF.mostimportant, colnames(characteristic))
+        CR.GRF.varimp.ordered <- order(CR.GRF.varimp)                             
+        CR.GRF.mostimportant <- colnames(X)[CR.GRF.varimp.ordered[1:4]] # 4 most important variables for splitting
         
       # Implement Cluster-Robust GRF
         CR.GRF <- causal_forest(X[,selected.vars], Y, W, Y.hat = Y.hat, W.hat = W.hat, clusters = district.clusters, honesty = TRUE, num.trees = numtrees, 
@@ -202,15 +208,21 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
       # Assessing Cluster-Robust GRF fit using the Best Linear Predictor Approach [BLP]
         CR.GRF.BLP <- test_calibration(CR.GRF)
     
-      # Test of heterogeneity using Differential ATE
-        CR.GRF.ATE.charact <- average_treatment_effect(CR.GRF, target.sample = "all", subset = (characteristic == 1))
-        CR.GRF.ATE.not.charact <- average_treatment_effect(CR.GRF, target.sample = "all", subset = !(characteristic == 1))
-        # DiffATE.CR.GRF.mean <- CR.GRF.ATE.charact[1] - CR.GRF.ATE.not.charact[1]
-        # DiffATE.GRF.SE <- sqrt(GRF.ATE.charact[2]^2 + GRF.ATE.not.charact[2]^2)
-        # lower.DiffATE.GRF <- (DiffATE.GRF.mean - (qnorm(0.975) * DiffATE.GRF.SE))
-        # upper.DiffATE.GRF <- (DiffATE.GRF.mean + (qnorm(0.975) * DiffATE.GRF.SE))
-        DiffATE.CR.GRF.test <- t.test(CR.GRF.ATE.charact, CR.GRF.ATE.not.charact, alternative = "two.sided", var.equal = FALSE)
-  
+      # Test of heterogeneity using Differential ATE along each and every variable
+        combined.X.median <- apply(combined.X, 2, median)
+        results_DiffATE_CR.GRF = sapply(c(1:ncol(combined.X)), function(k) {
+          CR.GRF.ATE.abovemedian <- average_treatment_effect(CR.GRF, target.sample = "all", subset = (combined.X[,k] >= combined.X.median[k]))
+          CR.GRF.ATE.belowmedian <- average_treatment_effect(CR.GRF, target.sample = "all", subset = (combined.X[,k] < combined.X.median[k]))
+          CR.GRF.AIPW.abovemedian <- get_scores(CR.GRF, subset = (combined.X[,k] >= combined.X.median[k]))
+          CR.GRF.AIPW.belowmedian <- get_scores(CR.GRF, subset = (combined.X[,k] < combined.X.median[k]))
+          DiffATE.CR.GRF.test <- t.test(CR.GRF.AIPW.abovemedian, CR.GRF.AIPW.belowmedian, alternative = "two.sided", var.equal = FALSE)
+          data.frame(t(c(paste(round(CR.GRF.ATE.belowmedian[1], 3), "(", round(CR.GRF.ATE.belowmedian[2], 3), ")"),
+                         paste(round(CR.GRF.ATE.abovemedian[1], 3), "(", round(CR.GRF.ATE.abovemedian[2], 3), ")"),
+                         paste(round(DiffATE.CR.GRF.test$p.value, 3)))))
+        }
+        colnames(results_DiffATE_CR.GRF) <- c("CR.GRF CATE below median", "CR.GRF CATE above median", "CR.GRF p-value difference")
+        rownames(results_DiffATE_CR.GRF) <- colnames(combined.X)                
+                                     
       # Plot the estimated CATE against the covariates with the highest variable importance, and the characteristic vector
         if (boolean.plot == TRUE) {
           for (k in 1:length(CR.GRF.mostimportant)) {
@@ -255,8 +267,8 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
     
       # Compute the variable importance
         LLCF.varimp <- variable_importance(forest.Y) 
-        LLCF.mostimportant <- colnames(X)[order(LLCF.varimp)[1:4]] # 4 most important variables for splitting
-        LLCF.mostimportant <- c(LLCF.mostimportant, colnames(characteristic))
+        LLCF.varimp.ordered <- order(LLCF.varimp)                                
+        LLCF.mostimportant <- colnames(X)[LLCF.varimp.ordered[1:4]] # 4 most important variables for splitting
         
       # Select variables to include using Lasso feature selection
         lasso.mod <- cv.glmnet(X, Y, alpha = 1)
@@ -313,14 +325,20 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
         LLCF.BLP <- test_calibration(LLCF)
         
       # Test of heterogeneity using Differential ATE
-        LLCF.ATE.charact <- average_treatment_effect(LLCF, target.sample = "all", subset = (characteristic == 1))
-        LLCF.ATE.not.charact <- average_treatment_effect(LLCF, target.sample = "all", subset = !(characteristic == 1))
-        # DiffATE.LLCF.mean <- LLCF.ATE.charact[1] - LLCF.ATE.not.charact[1]
-        # DiffATE.LLCF.SE <- sqrt(LLCF.ATE.charact[2]^2 + LLCF.ATE.not.charact[2]^2)
-        # lower.DiffATE.LLCF <- (DiffATE.LLCF.mean - (qnorm(0.975) * DiffATE.LLCF.SE))
-        # upper.DiffATE.LLCF <- (DiffATE.LLCF.mean + (qnorm(0.975) * DiffATE.LLCF.SE))
-        DiffATE.LLCF.test <- t.test(LLCF.ATE.charact, LLCF.ATE.not.charact, alternative = "two.sided", var.equal = FALSE)
-
+        combined.X.median <- apply(combined.X, 2, median)
+        results_DiffATE_LLCF = sapply(c(1:ncol(combined.X)), function(k) {
+          LLCF.ATE.abovemedian <- average_treatment_effect(LLCF, target.sample = "all", subset = (combined.X[,k] >= combined.X.median[k]))
+          LLCF.ATE.belowmedian <- average_treatment_effect(LLCF, target.sample = "all", subset = (combined.X[,k] < combined.X.median[k]))
+          LLCF.AIPW.abovemedian <- get_scores(LLCF, subset = (combined.X[,k] >= combined.X.median[k]))
+          LLCF.AIPW.belowmedian <- get_scores(LLCF, subset = (combined.X[,k] < combined.X.median[k]))
+          DiffATE.LLCF.test <- t.test(LLCF.AIPW.abovemedian, LLCF.AIPW.belowmedian, alternative = "two.sided", var.equal = FALSE)
+          data.frame(t(c(paste(round(LLCF.ATE.belowmedian[1], 3), "(", round(LLCF.ATE.belowmedian[2], 3), ")"),
+                         paste(round(LLCF.ATE.abovemedian[1], 3), "(", round(LLCF.ATE.abovemedian[2], 3), ")"),
+                         paste(round(DiffATE.LLCF.test$p.value, 3)))))
+        }
+        colnames(results_DiffATE_LLCF) <- c("LLCF CATE below median", "LLCF CATE above median", "LLCF p-value difference")
+        rownames(results_DiffATE_LLCF) <- colnames(combined.X)    
+                                      
       # Plot the estimated CATE against the covariates with the highest variable importance, and the characteristic vector
         if (boolean.plot == TRUE) {
           for (k in 1:length(LLCF.mostimportant)) {
@@ -350,34 +368,22 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
               dev.off()
           }
          }
-         
-        data.frame(t(c(paste(round(GRF.BLP[1,1], 3), "(", round(GRF.BLP[1,2], 3), ")"),
-                   paste(round(GRF.BLP[2,1], 3), "(", round(GRF.BLP[2,2], 3), ")"),
-                   paste(round(CR.GRF.BLP[1,1], 3), "(", round(CR.GRF.BLP[1,2], 3), ")"),
-                   paste(round(CR.GRF.BLP[2,1], 3), "(", round(CR.GRF.BLP[2,2], 3), ")"),
-                   paste(round(LLCF.BLP[1,1], 3), "(", round(LLCF.BLP[1,2], 3), ")"),
-                   paste(round(LLCF.BLP[2,1], 3), "(", round(LLCF.BLP[2,2], 3), ")"),
-                   paste(round(GRF.ATE.charact[1], 3), "(", round(GRF.ATE.charact[2], 3), ")"),
-                   paste(round(GRF.ATE.not.charact[1], 3), "(", round(GRF.ATE.not.charact[2], 3), ")"),
-                   paste(round(DiffATE.GRF.test$p.value, 3)),
-                   paste(round(CR.GRF.ATE.charact[1], 3), "(", round(CR.GRF.ATE.charact[2], 3), ")"),
-                   paste(round(CR.GRF.ATE.not.charact[1], 3), "(", round(CR.GRF.ATE.not.charact[2], 3), ")"),
-                   paste(round(DiffATE.CR.GRF.test$p.value, 3)),
-                   paste(round(LLCF.ATE.charact[1], 3), "(", round(LLCF.ATE.charact[2], 3), ")"),
-                   paste(round(LLCF.ATE.not.charact[1], 3), "(", round(LLCF.ATE.not.charact[2], 3), ")"),
-                   paste(round(DiffATE.LLCF.test$p.value, 3)))))
+        
+                                      
+       
+                                      
+       list("results_DiffATE_GRF" = results_DiffATE_GRF,
+             "results_DiffATE_CR.GRF" = results_DiffATE_CR.GRF,
+             "results_DiffATE_LLCF" = results_DiffATE_LLCF,
+             "variable.importance.GRF" = GRF.varimp.ordered,
+             "variable.importance.CR.GRF" = CR.GRF.varimp.ordered,
+             "variable.importance.LLCF" = LLCF.varimp.ordered,)
     
     })
     results_BLP <- t(basic.results[,1:6])   
     colnames(results_BLP) <- c("BLP[1] GRF", "BLP[2] GRF", "BLP[1] CR.GRF", "BLP[2] CR.GRF", "BLP[1] LLCF", "BLP[2] LLCF")
     
-    results_DiffATE <- t(basic.results[,7:17])                                    
-    colnames(results_DiffATE) <- c("GRF CATE subgroup", "GRF CATE rest", "GRF p-value difference", 
-                                   "CR.GRF CATE subgroup", "CR.GRF CATE rest", "CR.GRF p-value difference",
-                                   "LLCF CATE subgroup", "LLCF CATE rest", "LLCF p-value difference")
-    
-    results = list("results_BLP" = results_BLP, 
-                         "results_DiffATE" = results_DiffATE)                              
+                       
     return(results)
 }
 
