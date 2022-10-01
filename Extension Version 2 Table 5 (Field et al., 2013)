@@ -134,13 +134,11 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
         GRF.BLP <- test_calibration(GRF)
     
       # Test of heterogeneity using Differential ATE
-        GRF.ATE.charact <- average_treatment_effect(GRF, target.sample = "all", subset = (characteristic == 1))
-        GRF.ATE.not.charact <- average_treatment_effect(GRF, target.sample = "all", subset = !(characteristic == 1))
-        # DiffATE.GRF.mean <- GRF.ATE.charact[1] - GRF.ATE.not.charact[1]
-        # DiffATE.GRF.SE <- sqrt(GRF.ATE.charact[2]^2 + GRF.ATE.not.charact[2]^2)
-        # lower.DiffATE.GRF <- (DiffATE.GRF.mean - (qnorm(0.975) * DiffATE.GRF.SE))
-        # upper.DiffATE.GRF <- (DiffATE.GRF.mean + (qnorm(0.975) * DiffATE.GRF.SE))
-        DiffATE.GRF.test <- t.test(GRF.ATE.charact, GRF.ATE.not.charact, alternative = "two.sided", var.equal = FALSE)
+        GRF.ATE.charact <- average_treatment_effect(GRF, target.sample = "all", subset = (current.characteristic == 1))
+        GRF.ATE.not.charact <- average_treatment_effect(GRF, target.sample = "all", subset = !(current.characteristic == 1))
+        GRF.AIPW.charact <- get_scores(GRF, subset = (current.characteristic == 1))
+        GRF.AIPW.not.charact <- get_scores(GRF, subset = !(current.characteristic == 1))
+        DiffATE.GRF.test <- t.test(GRF.AIPW.charact, GRF.AIPW.not.charact, alternative = "two.sided", var.equal = FALSE)
         
       # Plot the estimated CATE against the covariates with the highest variable importance, and the characteristic vector
         if (boolean.plot == TRUE) {
@@ -215,13 +213,11 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
         CR.GRF.BLP <- test_calibration(CR.GRF)
     
       # Test of heterogeneity using Differential ATE
-        CR.GRF.ATE.charact <- average_treatment_effect(CR.GRF, target.sample = "all", subset = (characteristic == 1))
-        CR.GRF.ATE.not.charact <- average_treatment_effect(CR.GRF, target.sample = "all", subset = !(characteristic == 1))
-        # DiffATE.CR.GRF.mean <- CR.GRF.ATE.charact[1] - CR.GRF.ATE.not.charact[1]
-        # DiffATE.GRF.SE <- sqrt(GRF.ATE.charact[2]^2 + GRF.ATE.not.charact[2]^2)
-        # lower.DiffATE.GRF <- (DiffATE.GRF.mean - (qnorm(0.975) * DiffATE.GRF.SE))
-        # upper.DiffATE.GRF <- (DiffATE.GRF.mean + (qnorm(0.975) * DiffATE.GRF.SE))
-        DiffATE.CR.GRF.test <- t.test(CR.GRF.ATE.charact, CR.GRF.ATE.not.charact, alternative = "two.sided", var.equal = FALSE)
+        CR.GRF.ATE.charact <- average_treatment_effect(CR.GRF, target.sample = "all", subset = (current.characteristic == 1))
+        CR.GRF.ATE.not.charact <- average_treatment_effect(CR.GRF, target.sample = "all", subset = !(current.characteristic == 1))
+        CR.GRF.AIPW.charact <- get_scores(CR.GRF, subset = (current.characteristic == 1))
+        CR.GRF.AIPW.not.charact <- get_scores(CR.GRF, subset = !(current.characteristic == 1))
+        DiffATE.CR.GRF.test <- t.test(CR.GRF.AIPW.charact, CR.GRF.AIPW.not.charact, alternative = "two.sided", var.equal = FALSE)
   
       # Plot the estimated CATE against the covariates with the highest variable importance, and the characteristic vector
         if (boolean.plot == TRUE) {
@@ -325,13 +321,12 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
         LLCF.BLP <- test_calibration(LLCF)
         
       # Test of heterogeneity using Differential ATE
-        LLCF.ATE.charact <- average_treatment_effect(LLCF, target.sample = "all", subset = (characteristic == 1))
-        LLCF.ATE.not.charact <- average_treatment_effect(LLCF, target.sample = "all", subset = !(characteristic == 1))
-        # DiffATE.LLCF.mean <- LLCF.ATE.charact[1] - LLCF.ATE.not.charact[1]
-        # DiffATE.LLCF.SE <- sqrt(LLCF.ATE.charact[2]^2 + LLCF.ATE.not.charact[2]^2)
-        # lower.DiffATE.LLCF <- (DiffATE.LLCF.mean - (qnorm(0.975) * DiffATE.LLCF.SE))
-        # upper.DiffATE.LLCF <- (DiffATE.LLCF.mean + (qnorm(0.975) * DiffATE.LLCF.SE))
-        DiffATE.LLCF.test <- t.test(LLCF.ATE.charact, LLCF.ATE.not.charact, alternative = "two.sided", var.equal = FALSE)
+        # Test of heterogeneity using Differential ATE
+          LLCF.ATE.charact <- average_treatment_effect(LLCF, target.sample = "all", subset = (current.characteristic == 1))
+          LLCF.ATE.not.charact <- average_treatment_effect(LLCF, target.sample = "all", subset = !(current.characteristic == 1))
+          LLCF.AIPW.charact <- get_scores(LLCF, subset = (current.characteristic == 1))
+          LLCF.AIPW.not.charact <- get_scores(LLCF, subset = !(current.characteristic == 1))
+          DiffATE.LLCF.test <- t.test(LLCF.AIPW.charact, LLCF.AIPW.not.charact, alternative = "two.sided", var.equal = FALSE)
 
       # Plot the estimated CATE against the covariates with the highest variable importance, and the characteristic vector
         if (boolean.plot == TRUE) {
