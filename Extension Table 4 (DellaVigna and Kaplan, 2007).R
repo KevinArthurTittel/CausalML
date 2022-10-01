@@ -37,10 +37,10 @@ library(glmnet)
     Decile1PotentialSubscribers <- as.integer(rowSums(Fox_News_Data[,c(71:79)]) == 0)
 
     cable.controls <- cbind(Decile1NumberChannels, Fox_News_Data[,c(62:70)], Decile1PotentialSubscribers, Fox_News_Data[,c(71:79)])
-    colnames(cable.controls) <- c("Decile 1 no. cable channels", "Decile 2 no. cable channels", "Decile 3 no. cable channels", 
-                                  "Decile 4 no. cable channels", "Decile 5 no. cable channels", "Decile 6 no. cable channels", 
-                                  "Decile 7 no. cable channels", "Decile 8 no. cable channels", "Decile 9 no. cable channels", 
-                                  "Decile 10 no. cable channels", "Decile 1 no. potential subscribers", "Decile 2 no. potential subscribers", 
+    colnames(cable.controls) <- c("Decile 1 no. cable channels available", "Decile 2 no. cable channels available", "Decile 3 no. cable channels available", 
+                                  "Decile 4 no. cable channels available", "Decile 5 no. cable channels available", "Decile 6 no. cable channels available", 
+                                  "Decile 7 no. cable channels available", "Decile 8 no. cable channels available", "Decile 9 no. cable channels available", 
+                                  "Decile 10 no. cable channels available", "Decile 1 no. potential subscribers", "Decile 2 no. potential subscribers", 
                                   "Decile 3 no. potential subscribers", "Decile 4 no. potential subscribers", "Decile 5 no. potential subscribers", 
                                   "Decile 6 no. potential subscribers", "Decile 7 no. potential subscribers", "Decile 8 no. potential subscribers", 
                                   "Decile 9 no. potential subscribers", "Decile 10 no. potential subscribers")
@@ -49,7 +49,7 @@ library(glmnet)
     X <- as.matrix(cbind(demographic.controls.2000, demographic.controls.Diff19962000, cable.controls))
 
     remaining.variables <- Fox_News_Data[,c(14,59, 204, 205)]
-    colnames(remaining.variables) <- c("NumberCableChannels", "NumberPotentialSubscribers", "Swing district", "Republican district")
+    colnames(remaining.variables) <- c("No. cable channels available", "NumberPotentialSubscribers", "Swing district", "Republican district")
 
   # Clean the data
     indices <- (Fox_News_Data$sample12000 == 1)
