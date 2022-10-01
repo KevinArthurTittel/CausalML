@@ -391,6 +391,11 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
 }
 
 
+fun_insert <- function(x, pos, insert) {
+  gsub(paste0("^(.{", pos, "})(.*)$"),
+       paste0("\\1", insert, "\\2"),
+       x)
+}
 
 
 
