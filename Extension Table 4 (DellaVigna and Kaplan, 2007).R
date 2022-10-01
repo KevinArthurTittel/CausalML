@@ -124,6 +124,15 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
       # Assessing GRF fit and heterogeneity using the Best Linear Predictor Approach [BLP]
         GRF.BLP <- test_calibration(GRF)
     
+      # Assessing general GRF heterogeneity using Differential ATE Approach
+        GRF.high.effect <- (GRF.CATE > median(GRF.CATE))
+        GRF.ATE.high <- average_treatment_effect(GRF, subset = GRF.high.effect)
+        GRF.ATE.low <- average_treatment_effect(GRF, subset = !GRF.high.effect)
+        DiffATE.GRF.mean <- GRF.ATE.high[1] - GRF.ATE.low[1]
+        DiffATE.GRF.SE <- sqrt(GRF.ATE.high[2]^2 + GRF.ATE.low[2]^2)
+        lower.DiffATE.GRF <- (DiffATE.GRF.mean - (qnorm(0.975) * DiffATE.GRF.SE))
+        upper.DiffATE.GRF <- (DiffATE.GRF.mean + (qnorm(0.975) * DiffATE.GRF.SE))
+    
       # Test of heterogeneity using Differential ATE along each and every variable
         combined.X.median <- apply(combined.X, 2, median)
         results_DiffATE_GRF = sapply(c(1:ncol(combined.X)), function(k) {
@@ -372,21 +381,38 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
           }
          }
         
+       results_BLP <-  data.frame(t(c(paste(round(GRF.BLP[1,1], 3), "(", round(GRF.BLP[1,2], 3), ")"),
+                                      paste(round(GRF.BLP[2,1], 3), "(", round(GRF.BLP[2,2], 3), ")"),
+                                      paste(round(CR.GRF.BLP[1,1], 3), "(", round(CR.GRF.BLP[1,2], 3), ")"),
+                                      paste(round(CR.GRF.BLP[2,1], 3), "(", round(CR.GRF.BLP[2,2], 3), ")"),
+                                      paste(round(LLCF.BLP[1,1], 3), "(", round(LLCF.BLP[1,2], 3), ")"),
+                                      paste(round(LLCF.BLP[2,1], 3), "(", round(LLCF.BLP[2,2], 3), ")"))))
+       colnames(results_BLP) <- c("BLP[1] GRF", "BLP[2] GRF", "BLP[1] CR.GRF", "BLP[2] CR.GRF", "BLP[1] LLCF", "BLP[2] LLCF")
                                       
-       
-                                      
+       results_DiffATE_General <- data.frame(t(c(paste(round(GRF.ATE.high[1], 3), "(", round(GRF.ATE.high[2], 3), ")"),
+                                          paste(round(GRF.ATE.low[1], 3), "(", round(GRF.ATE.low[2], 3), ")"),
+                                          paste(round(DiffATE.GRF.mean, 3), "(", round(DiffATE.GRF.SE, 3), ")"),
+                                          paste(round(CR.GRF.ATE.high[1], 3), "(", round(CR.GRF.ATE.high[2], 3), ")"),
+                                          paste(round(CR.GRF.ATE.low[1], 3), "(", round(CR.GRF.ATE.low[2], 3), ")"),
+                                          paste(round(DiffATE.CR.GRF.mean, 3), "(", round(DiffATE.CR.GRF.SE, 3), ")"),
+                                          paste(round(LLCF.ATE.high[1], 3), "(", round(LLCF.ATE.high[2], 3), ")"),
+                                          paste(round(LLCF.ATE.low[1], 3), "(", round(LLCF.ATE.low[2], 3), ")"),
+                                          paste(round(DiffATE.LLCF.mean, 3), "(", round(DiffATE.LLCF.SE, 3), ")"))))                          
+       colnames(results_DiffATE) <- c("GRF CATE above median", "GRF CATE below median", "GRF CATE mean difference", 
+                                      "CR.GRF CATE above median", "CR.GRF CATE below median", "CR.GRF CATE mean difference",
+                                      "LLCF CATE above median", "LLCF CATE below median", "LLCF CATE mean difference")
+                                                                 
        list("results_DiffATE_GRF" = results_DiffATE_GRF,
              "results_DiffATE_CR.GRF" = results_DiffATE_CR.GRF,
              "results_DiffATE_LLCF" = results_DiffATE_LLCF,
+             "results_DiffATE_General" = results_DiffATE_General,
              "variable.importance.GRF" = GRF.varimp.ordered,
              "variable.importance.CR.GRF" = CR.GRF.varimp.ordered,
-             "variable.importance.LLCF" = LLCF.varimp.ordered,)
+             "variable.importance.LLCF" = LLCF.varimp.ordered,
+             "results_BLP" = results_BLP)
     
     })
-    results_BLP <- t(basic.results[,1:6])   
-    colnames(results_BLP) <- c("BLP[1] GRF", "BLP[2] GRF", "BLP[1] CR.GRF", "BLP[2] CR.GRF", "BLP[1] LLCF", "BLP[2] LLCF")
-    
-                       
+                    
     return(results)
 }
 
