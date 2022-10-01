@@ -237,7 +237,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
               
             # Create test set
               X.test <- matrix(rep(X.median, length(important.var.test)), length(important.var.test), byrow = TRUE)
-              X.test[,1] = important.var.test
+              X.test[,(CR.GRF.mostimportant[k])] = important.var.test
               
             # Predict new CATE estimates
               CR.GRF.pred.test <- predict(CR.GRF, X.test, estimate.variance = TRUE)
@@ -353,7 +353,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
               
             # Create test set
               X.test <- matrix(rep(X.median, length(important.var.test)), length(important.var.test), byrow = TRUE)
-              X.test[,1] = important.var.test
+              X.test[,(LLCF.mostimportant[k])] = important.var.test
               
             # Predict new CATE estimates
               LLCF.pred.test <- predict(LLCF, X.test, estimate.variance = TRUE)
