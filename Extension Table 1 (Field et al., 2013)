@@ -112,4 +112,4 @@ set.seed(123)
                                         "Operating costs", "Total non-business spending", "Home repairs", "Utilities, taxes and rent",
                                         "Human capital", "Money for relending", "Savings", "Food and durable consumption", "New businesses")                                                             
 
-write.csv(results[["results_ATE"]], file = "Table 1 (Field et al., 2013).xlsx")
+write.csv(results_ATE, file = "Table 1 (Field et al., 2013).xlsx")
