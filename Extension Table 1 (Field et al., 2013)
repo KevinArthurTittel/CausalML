@@ -93,7 +93,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
   
       # Implement LLCF
         LLCF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE, num.trees = numtrees, 
-                              tune.parameters = c("sample.fraction", "mtry", "min.node.size", "honesty.fraction"))
+                              tune.parameters = "all")
                               
       # Compute ATE                        
         LLCF.ATE <- average_treatment_effect(LLCF, target.sample = "all")
