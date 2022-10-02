@@ -112,4 +112,4 @@ set.seed(123)
                  "repaid at least 50 percent of the loan", "made first payment")
   
 
-write.csv(results[["results_ATE"]], file = "Table 3 (Field et al., 2013).xlsx")
+write.csv(results_ATE, file = "Table 3 (Field et al., 2013).xlsx")
