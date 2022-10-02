@@ -15,6 +15,7 @@ set.seed(123)
   lambdas <- c(0, 0.1, 0.3, 0.5, 0.7, 1, 1.5) # Concerns ridge penalty parameters; do not adjust.
   boolean.lambdas <- FALSE # Set to TRUE to use lambdas instead of automatic penalty tuning.
   boolean.plot <- FALSE # Set to TRUE to make various plots of interest.
+  results_ATE <- c()
 
 # Estimation procedure
   for (i in index) {
@@ -119,4 +120,4 @@ set.seed(123)
   
 
 
-write.csv(results[["results_ATE"]], file = "Table 4 (Field et al., 2013).xlsx")
+write.csv(results_ATE, file = "Table 4 (Field et al., 2013).xlsx")
