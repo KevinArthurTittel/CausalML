@@ -15,10 +15,10 @@ set.seed(123)
   lambdas <- c(0, 0.1, 0.3, 0.5, 0.7, 1, 1.5) # Concerns ridge penalty parameters; do not adjust.
   boolean.lambdas <- FALSE # Set to TRUE to use lambdas instead of automatic penalty tuning.
   boolean.plot <- FALSE # Set to TRUE to make various plots of interest.
-
+  results_ATE <- c()
+  
 # Estimation procedure
-run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
-  basic.results = sapply(index, function(i) {
+  for (i in index) {
     Y <- Grace_Period_Data[,(49+i)]
     Y <- as.vector(Y)
   
@@ -102,20 +102,19 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
                               
       # Compute ATE                        
         LLCF.ATE <- average_treatment_effect(LLCF, target.sample = "all")
+   
+    ############################
+    ###### Update results ######
+    ############################
     
-       
-      data.frame(t(c(paste(round(GRF.ATE[1], 3), "(", round(GRF.ATE[2], 3), ")"), 
-                         paste(round(CR.GRF.ATE[1], 3), "(", round(CR.GRF.ATE[2], 3), ")"),
-                         paste(round(LLCF.ATE[1], 3), "(", round(LLCF.ATE[2], 3), ")"))))
-  })
+      results_ATE <- rbind(results_ATE, data.frame(t(c(paste(round(GRF.ATE[1], 3), "(", round(GRF.ATE[2], 3), ")"), 
+                                                       paste(round(CR.GRF.ATE[1], 3), "(", round(CR.GRF.ATE[2], 3), ")"),
+                                                       paste(round(LLCF.ATE[1], 3), "(", round(LLCF.ATE[2], 3), ")"))))) 
+  }
   
-  results_ATE <- t(basic.results)
-    colnames(results_ATE) <- c("ATE GRF", "ATE CR.GRF", "ATE LLCF")    
-    rownames(results_ATE) <- rep(c("profit", "capital", "log of monhtly HH income"), 4)
   
-  results = list("results_ATE" = results_ATE)                              
-  return(results)
-}
+  colnames(results_ATE) <- c("ATE GRF", "ATE CR.GRF", "ATE LLCF")    
+  rownames(results_ATE) <- rep(c("profit", "capital", "log of monhtly HH income"), 4)
 
-results = run_method(numtrees, index, lambdas, boolean.plot, boolean.lambdas)
+
 write.csv(results[["results_ATE"]], file = "Table 2 (Field et al., 2013).xlsx")
