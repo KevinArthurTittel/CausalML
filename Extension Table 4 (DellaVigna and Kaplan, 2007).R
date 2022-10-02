@@ -20,9 +20,7 @@ set.seed(123)
   filename.plot.LLCF.CATE <- "LLCF CATE .pdf"
 
 # Estimation procedure
-run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
-  basic.results = sapply(index, function(i) {
-  
+
     ###########################
     ########### GRF ###########
     ###########################
@@ -100,7 +98,15 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
         full.GRF.BLProjection <- best_linear_projection(GRF, X)
         mostimportant.GRF.BLProjection <- best_linear_projection(GRF, X[,GRF.mostimportant])       
         sign.var.DiffATE_GRF.BLProjection <- best_linear_projection(GRF, X[,sign.var.DiffATE_GRF])                           
-                                     
+        BLProjection_GRF <- texreg(list(full.GRF.BLProjection, mostimportant.GRF.BLProjection, sign.var.DiffATE_GRF.BLProjection),
+          custom.model.names = c("All covariates", "Most important covariates", "Significant Differential ATE covariates"),
+          table = FALSE,
+          use.packages = FALSE,
+          dcolumn = TRUE,
+          single.row = TRUE,
+          custom.coef.names = colnames(combined.X)
+         )
+                                   
       # Plot the estimated CATE against the covariates with the highest variable importance, and the characteristic vector
         if (boolean.plot == TRUE) {
           for (k in 1:length(sign.var.DiffATE_GRF)) {
@@ -202,7 +208,15 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
         full.CR.GRF.BLProjection <- best_linear_projection(CR.GRF, X)
         mostimportant.CR.GRF.BLProjection <- best_linear_projection(CR.GRF, X[,CR.GRF.mostimportant])       
         sign.var.DiffATE_CR.GRF.BLProjection <- best_linear_projection(CR.GRF, X[,sign.var.DiffATE_CR.GRF])                           
-                                             
+        BLProjection_CR.GRF <- texreg(list(full.CR.GRF.BLProjection, mostimportant.CR.GRF.BLProjection, CR.sign.var.DiffATE_GRF.BLProjection),
+          custom.model.names = c("All covariates", "Most important covariates", "Significant Differential ATE covariates"),
+          table = FALSE,
+          use.packages = FALSE,
+          dcolumn = TRUE,
+          single.row = TRUE,
+          custom.coef.names = colnames(combined.X)
+         )
+                                        
       # Plot the estimated CATE against the covariates with the highest variable importance, and the characteristic vector
         if (boolean.plot == TRUE) {
           for (k in 1:length(sign.var.DiffATE_CR.GRF)) {
@@ -332,7 +346,15 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
         full.LLCF.BLProjection <- best_linear_projection(LLCF, X)
         mostimportant.LLCF.BLProjection <- best_linear_projection(LLCF, X[,LLCF.mostimportant])       
         sign.var.DiffATE_LLCF.BLProjection <- best_linear_projection(LLCF, X[,sign.var.DiffATE_LLCF])                           
-                                        
+        BLProjection_LLCF <- texreg(list(full.LLCF.BLProjection, mostimportant.LLCF.BLProjection, sign.var.DiffATE_LLCF.BLProjection),
+          custom.model.names = c("All covariates", "Most important covariates", "Significant Differential ATE covariates"),
+          table = FALSE,
+          use.packages = FALSE,
+          dcolumn = TRUE,
+          single.row = TRUE,
+          custom.coef.names = colnames(combined.X)
+         )
+                                      
       # Plot the estimated CATE against the covariates with the highest variable importance, and the characteristic vector
         if (boolean.plot == TRUE) {
           for (k in 1:length(sign.var.DiffATE_LLCF)) {
@@ -362,7 +384,11 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
               dev.off()
           }
          }
-        
+     
+    ############################
+    ###### Update results ######
+    ############################
+                                      
        results_BLPredictor <-  data.frame(t(c(paste(round(GRF.BLPredictor[1,1], 3), "(", round(GRF.BLPredictor[1,2], 3), ")"),
                                       paste(round(GRF.BLPredictor[2,1], 3), "(", round(GRF.BLPredictor[2,2], 3), ")"),
                                       paste(round(CR.GRF.BLPredictor[1,1], 3), "(", round(CR.GRF.BLPredictor[1,2], 3), ")"),
@@ -385,33 +411,26 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
        colnames(results_DiffATE) <- c("GRF CATE above median", "GRF CATE below median", "GRF CATE mean difference", 
                                       "CR.GRF CATE above median", "CR.GRF CATE below median", "CR.GRF CATE mean difference",
                                       "LLCF CATE above median", "LLCF CATE below median", "LLCF CATE mean difference")
-                                                                 
-       list("results_DiffATE_GRF" = results_DiffATE_GRF,
-             "results_DiffATE_CR.GRF" = results_DiffATE_CR.GRF,
-             "results_DiffATE_LLCF" = results_DiffATE_LLCF,
-             "results_DiffATE_General" = results_DiffATE_General,
-             "variable.importance.GRF" = GRF.varimp.ordered,
-             "variable.importance.CR.GRF" = CR.GRF.varimp.ordered,
-             "variable.importance.LLCF" = LLCF.varimp.ordered,
-             "results_BLPredictor" = results_BLPredictor)
-    
-    })
-                    
-    return(results)
-}
-
-
+                                                                                     
 fun_insert <- function(x, pos, insert) {
   gsub(paste0("^(.{", pos, "})(.*)$"),
        paste0("\\1", insert, "\\2"),
        x)
 }
 
+                                      
+results_table4 <- list('Sheet1' = results_DiffATE_GRF, 
+                       'Sheet2' = results_DiffATE_CR.GRF,
+                       'Sheet3' = results_DiffATE_LLCF,
+                       'Sheet4' = results_DiffATE_General,
+                       'Sheet5' = GRF.varimp.ordered,
+                       'Sheet6' = CR.GRF.varimp.ordered,
+                       'Sheet7' = LLCF.varimp.ordered,
+                       'Sheet8' = results_BLPredictor,
+                       'Sheet9' = BLProjection_GRF,
+                       'Sheet10' = BLProjection_CR.GRF,
+                       'Sheet11' = BLProjection_LLCF)
+                                                              
+write.xlsx(results_table4, file = "Table 4 (DellaVigna and Kaplan, 2007).xlsx")
 
-
-
-
-
-                   
-                   
-  
+               
