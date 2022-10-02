@@ -108,6 +108,7 @@ set.seed(123)
          )
                                    
       # Plot the estimated CATE against the covariates with the highest variable importance, and the characteristic vector
+         pdf("GRF CATE plots.pdf")
         if (boolean.plot == TRUE) {
           for (k in 1:length(sign.var.DiffATE_GRF)) {
             # Set all variables at their median values
@@ -128,15 +129,13 @@ set.seed(123)
               upper.GRF.test <- GRF.CATE.test + qnorm(0.975)*GRF.CATE.SE.test
             
             # Make plot and save
-              pdf(fun_insert(x = filename.plot.GRF.CATE, pos = (nchar(filename.plot.GRF.CATE) - 4), insert = (sign.var.DiffATE_GRF[k])))
               plot(X.test[,(sign.var.DiffATE_GRF[k])], GRF.CATE.test, type = "l", ylim = range(min(lower.GRF.test), max(upper.GRF.test)), xlab = sign.var.DiffATE_GRF[k], ylab = "CATE")
               lines(X.test[,(sign.var.DiffATE_GRF[k])], upper.GRF.test, col = 1, lty = 2)
               lines(X.test[,(sign.var.DiffATE_GRF[k])], lower.GRF.test, col = 1, lty = 2)
               grid()
-              dev.off()
           }
          }
-        
+         dev.off()
     ############################
     #### Cluster-Robust GRF ####
     ############################
@@ -218,6 +217,7 @@ set.seed(123)
          )
                                         
       # Plot the estimated CATE against the covariates with the highest variable importance, and the characteristic vector
+        pdf("CR.GRF CATE plots.pdf")
         if (boolean.plot == TRUE) {
           for (k in 1:length(sign.var.DiffATE_CR.GRF)) {
             # Set all variables at their median values
@@ -238,15 +238,13 @@ set.seed(123)
               upper.CR.GRF.test <- CR.GRF.CATE.test + qnorm(0.975)*CR.GRF.CATE.SE.test
             
             # Make plot and save
-              pdf(fun_insert(x = filename.plot.CR.GRF.CATE, pos = (nchar(filename.plot.CR.GRF.CATE) - 4), insert = (sign.var.DiffATE_CR.GRF[k])))
               plot(X.test[,(sign.var.DiffATE_CR.GRF[k])], CR.GRF.CATE.test, type = "l", ylim = range(min(lower.CR.GRF.test), max(upper.CR.GRF.test)), xlab = sign.var.DiffATE_CR.GRF[k], ylab = "CATE")
               lines(X.test[,(sign.var.DiffATE_CR.GRF[k])], upper.CR.GRF.test, col = 1, lty = 2)
               lines(X.test[,(sign.var.DiffATE_CR.GRF[k])], lower.CR.GRF.test, col = 1, lty = 2)
-              grid()
-              dev.off()
+              grid()        
           }
          }
-         
+         dev.off()
     ############################
     ########### LLCF ###########
     ############################
@@ -356,6 +354,7 @@ set.seed(123)
          )
                                       
       # Plot the estimated CATE against the covariates with the highest variable importance, and the characteristic vector
+        pdf("LLCF CATE plots.pdf")
         if (boolean.plot == TRUE) {
           for (k in 1:length(sign.var.DiffATE_LLCF)) {
             # Set all variables at their median values
@@ -376,15 +375,14 @@ set.seed(123)
               upper.LLCF.test <- LLCF.CATE.test + qnorm(0.975)*LLCF.CATE.SE.test
             
             # Make plot and save
-              pdf(fun_insert(x = filename.plot.LLCF.CATE, pos = (nchar(filename.plot.LLCF.CATE) - 4), insert = (sign.var.DiffATE_LLCF[k])))
               plot(X.test[,(sign.var.DiffATE_LLCF[k])], LLCF.CATE.test, type = "l", ylim = range(min(lower.LLCF.test), max(upper.LLCF.test)), xlab = sign.var.DiffATE_LLCF[k], ylab = "CATE")
               lines(X.test[,(sign.var.DiffATE_LLCF[k])], upper.LLCF.test, col = 1, lty = 2)
               lines(X.test[,(sign.var.DiffATE_LLCF[k])], lower.LLCF.test, col = 1, lty = 2)
               grid()
-              dev.off()
           }
          }
-     
+         dev.off()
+                                      
     ############################
     ###### Update results ######
     ############################
