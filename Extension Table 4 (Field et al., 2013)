@@ -17,8 +17,7 @@ set.seed(123)
   boolean.plot <- FALSE # Set to TRUE to make various plots of interest.
 
 # Estimation procedure
-run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
-  basic.results = sapply(index, function(i) {
+  for (i in index) {
     Y <- Grace_Period_Data[,(68+i)]
     Y <- as.vector(Y)
   
@@ -49,20 +48,8 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
       # Implement GRF
         GRF <- causal_forest(current.X[,selected.vars], current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees, 
                              honesty = TRUE, tune.parameters = "all")
-        GRF.pred <- predict(GRF, estimate.variance = TRUE)
-        GRF.CATE <- GRF.pred$predictions
-        GRF.CATE.SE <- sqrt(GRF.pred$variance.estimates)
-  
-      # Find lower and upper bounds for 95% confidence intervals
-        lower.GRF <- GRF.CATE - qnorm(0.975)*GRF.CATE.SE
-        upper.GRF <- GRF.CATE + qnorm(0.975)*GRF.CATE.SE
-    
-      # Graph the predicted GRF heterogeneous treatment effect estimates
-        if (boolean.plot == TRUE) {
-          hist(GRF.CATE)
-        }
 
-      # Compute ATE with corresponding 95% confidence intervals
+      # Compute ATE 
         GRF.ATE <- average_treatment_effect(GRF, target.sample = "all")
     
     ############################
@@ -81,20 +68,8 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
       # Implement Cluster-Robust GRF
         CR.GRF <- causal_forest(current.X[,selected.vars], current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, clusters = current.loangroups, 
                                 honesty = TRUE, num.trees = numtrees, tune.parameters = "all")
-        CR.GRF.pred <- predict(CR.GRF, estimate.variance = TRUE)
-        CR.GRF.CATE <- CR.GRF.pred$predictions
-        CR.GRF.CATE.SE <- sqrt(CR.GRF.pred$variance.estimates)
     
-      # Find lower and upper bounds for 95% confidence intervals
-        lower.CR.GRF <- CR.GRF.CATE - qnorm(0.975)*CR.GRF.CATE.SE
-        upper.CR.GRF <- CR.GRF.CATE + qnorm(0.975)*CR.GRF.CATE.SE
-              
-      # Graph the predicted Cluster-Robust GRF heterogeneous treatment effect estimates
-        if (boolean.plot == TRUE) {
-          hist(CR.GRF.CATE)
-        }
-    
-      # Compute ATE with corresponding 95% confidence intervals
+      # Compute ATE 
         CR.GRF.ATE <- average_treatment_effect(CR.GRF, target.sample = "all")
   
     ############################
@@ -124,51 +99,24 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
       # Implement LLCF
         LLCF <- causal_forest(current.X, current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE, 
                               num.trees = numtrees, tune.parameters = "all")
+                              
+      # Compute ATE                        
         LLCF.ATE <- average_treatment_effect(LLCF, target.sample = "all")
     
-        if (boolean.lambdas == FALSE) {
-          # Predict: tuning without grid search over lambdas
-            LLCF.pred <- predict(LLCF, linear.correction.variables = selected, ll.weight.penalty = TRUE, estimate.variance = TRUE)
-            LLCF.CATE <- LLCF.pred$predictions
-            LLCF.CATE.SE <- sqrt(LLCF.pred$variance.estimates)
-        } else {
-          # Predict: tuning done using set of lambdas
-            LLCF.mse.old <- +Inf
-            for (l in length(lambdas)) {
-              LLCF.CATE.old <- predict(LLCF, linear.correction.variables = selected, ll.lambda = lambdas[l], ll.weight.penalty = TRUE, estimate.variance = TRUE)
-              predictions <- LLCF.CATE.old$predictions
-              LLCF.mse.new <- mean((predictions - mean(predictions))**2)
-              if (LLCF.mse.new < LLCF.mse.old) {
-                LLCF.mse.old <- LLCF.mse.new
-                LLCF.CATE.SE <- sqrt(LLCF.CATE.old$variance.estimates)
-                LLCF.CATE <- predictions
-              }
-            }
-        }
-       
-      # Find lower and upper bounds for 95% confidence intervals
-        lower.LLCF <- LLCF.CATE - qnorm(0.975)*LLCF.CATE.SE
-        upper.LLCF <- LLCF.CATE + qnorm(0.975)*LLCF.CATE.SE
+    ############################
+    ###### Update results ######
+    ############################
     
-      # Graph the predicted LLCF heterogeneous treatment effect estimates
-        if (boolean.plot == TRUE) {
-          hist(LLCF.CATE)
-        }
-  
-      data.frame(t(c(paste(round(GRF.ATE[1], 3), "(", round(GRF.ATE[2], 3), ")"), 
+        results_ATE <- rbind(results_ATE, data.frame(t(c(paste(round(GRF.ATE[1], 3), "(", round(GRF.ATE[2], 3), ")"), 
                      paste(round(CR.GRF.ATE[1], 3), "(", round(CR.GRF.ATE[2], 3), ")"),
-                     paste(round(LLCF.ATE[1], 3), "(", round(LLCF.ATE[2], 3), ")"))))
-  })
+                     paste(round(LLCF.ATE[1], 3), "(", round(LLCF.ATE[2], 3), ")")))))
+  }
   
-  results_ATE <- t(basic.results)
-    colnames(results_ATE) <- c("ATE GRF", "ATE CR.GRF", "ATE LLCF")    
-    rownames(results_ATE) <- c("business closure", "average difference in profits between high- and low-profit months",
+  colnames(results_ATE) <- c("ATE GRF", "ATE CR.GRF", "ATE LLCF")    
+  rownames(results_ATE) <- c("business closure", "average difference in profits between high- and low-profit months",
                  "sold goods or services at a discount to make loan payment", "customers buy on credit",
                  "customers pre-order goods or service", "number of goods and services provided")
   
-  results = list("results_ATE" = results_ATE)                              
-  return(results)
-}
 
-results = run_method(numtrees, index, lambdas, boolean.plot, boolean.lambdas)
+
 write.csv(results[["results_ATE"]], file = "Table 4 (Field et al., 2013).xlsx")
