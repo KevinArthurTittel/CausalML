@@ -89,7 +89,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
       # Compute the variable importance
         GRF.varimp <- variable_importance(forest.Y) 
         GRF.varimp.ordered <- order(GRF.varimp)
-        GRF.mostimportant <- colnames(X)[GRF.varimp.ordered[1:4]] # 4 most important variables for splitting
+        GRF.mostimportant <- colnames(X)[(GRF.varimp.ordered[1:4])] # 4 most important variables for splitting
         
       # Select variables to include using preliminary GRF
         prelim.GRF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees, honesty = TRUE)
@@ -99,11 +99,14 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
       # Implement GRF
         GRF <- causal_forest(X[,selected.vars], Y, W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees, 
                              honesty = TRUE, tune.parameters = "all")
+    
+      # Compute ATE 
+        GRF.ATE <- average_treatment_effect(GRF, target.sample = "all")
+    
+      # Compute HTE with corresponding 95% confidence intervals
         GRF.pred <- predict(GRF, estimate.variance = TRUE)
         GRF.CATE <- GRF.pred$predictions
         GRF.CATE.SE <- sqrt(GRF.pred$variance.estimates)
-  
-      # Find lower and upper bounds for 95% confidence intervals
         lower.GRF <- GRF.CATE - qnorm(0.975)*GRF.CATE.SE
         upper.GRF <- GRF.CATE + qnorm(0.975)*GRF.CATE.SE
     
@@ -112,18 +115,15 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
           hist(GRF.CATE)
         }
     
-      # Compute ATE with corresponding 95% confidence intervals
-        GRF.ATE <- average_treatment_effect(GRF, target.sample = "all")
-    
       # See if the GRF succeeded in capturing heterogeneity by plotting the TOC and calculating the 95% confidence interval for the AUTOC
         GRF.rate <- rank_average_treatment_effect(GRF, GRF.CATE, target = "AUTOC")
         if (boolean.plot == TRUE) {
           plot(GRF.rate)
         }
 
-      # Assessing GRF fit and heterogeneity using the Best Linear Predictor Approach [BLP]
-        GRF.BLP <- test_calibration(GRF)
-    
+      # Assessing GRF fit and heterogeneity using the Best Linear Predictor Approach [BLPredictor]
+        GRF.BLPredictor <- test_calibration(GRF)
+                                         
       # Assessing general GRF heterogeneity using Differential ATE Approach
         GRF.high.effect <- (GRF.CATE > median(GRF.CATE))
         GRF.ATE.high <- average_treatment_effect(GRF, subset = GRF.high.effect)
@@ -147,19 +147,25 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
         }
         colnames(results_DiffATE_GRF) <- c("GRF CATE below median", "GRF CATE above median", "GRF p-value difference")
         rownames(results_DiffATE_GRF) <- colnames(combined.X)                           
-        
+        sign.var.DiffATE_GRF <- rownames((results_DiffATE_GRF[,3] < 0.10))
+                                     
+      # Assessing GRF fit and heterogeneity using the Best Linear Projection Approach [BLProjection]
+        full.GRF.BLProjection <- best_linear_projection(GRF, X)
+        mostimportant.GRF.BLProjection <- best_linear_projection(GRF, X[,GRF.mostimportant])       
+        sign.var.DiffATE_GRF.BLProjection <- best_linear_projection(GRF, X[,sign.var.DiffATE_GRF])                           
+                                     
       # Plot the estimated CATE against the covariates with the highest variable importance, and the characteristic vector
         if (boolean.plot == TRUE) {
-          for (k in 1:length(GRF.mostimportant)) {
+          for (k in 1:length(sign.var.DiffATE_GRF)) {
             # Set all variables at their median values
               X.median <- apply(X, 2, median)
               
             # Create ordered vector of important variable
-              important.var.test = seq(min(X$GRF.mostimportant[k]), max(X$GRF.mostimportant[k]))
+              important.var.test = seq(min(X$sign.var.DiffATE_GRF[k]), max(X$sign.var.DiffATE_GRF[k]))
               
             # Create test set
               X.test <- matrix(rep(X.median, length(important.var.test)), length(important.var.test), byrow = TRUE)
-              X.test[,(GRF.mostimportant[k])] = important.var.test
+              X.test[,(sign.var.DiffATE_GRF[k])] = important.var.test
               
             # Predict new CATE estimates
               GRF.pred.test <- predict(GRF, X.test, estimate.variance = TRUE)
@@ -169,10 +175,10 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
               upper.GRF.test <- GRF.CATE.test + qnorm(0.975)*GRF.CATE.SE.test
             
             # Make plot and save
-              pdf(fun_insert(x = filename.plot.GRF.CATE, pos = (nchar(filename.plot.GRF.CATE) - 4), insert = (GRF.mostimportant[k])))
-              plot(X.test[,(GRF.mostimportant[k])], GRF.CATE.test, type = "l", ylim = range(min(lower.GRF.test), max(upper.GRF.test)), xlab = GRF.mostimportant[k], ylab = "CATE")
-              lines(X.test[,(GRF.mostimportant[k])], upper.GRF.test, col = 1, lty = 2)
-              lines(X.test[,(GRF.mostimportant[k])], lower.GRF.test, col = 1, lty = 2)
+              pdf(fun_insert(x = filename.plot.GRF.CATE, pos = (nchar(filename.plot.GRF.CATE) - 4), insert = (sign.var.DiffATE_GRF[k])))
+              plot(X.test[,(sign.var.DiffATE_GRF[k])], GRF.CATE.test, type = "l", ylim = range(min(lower.GRF.test), max(upper.GRF.test)), xlab = sign.var.DiffATE_GRF[k], ylab = "CATE")
+              lines(X.test[,(sign.var.DiffATE_GRF[k])], upper.GRF.test, col = 1, lty = 2)
+              lines(X.test[,(sign.var.DiffATE_GRF[k])], lower.GRF.test, col = 1, lty = 2)
               grid()
               dev.off()
           }
@@ -195,11 +201,14 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
       # Implement Cluster-Robust GRF
         CR.GRF <- causal_forest(X[,selected.vars], Y, W, Y.hat = Y.hat, W.hat = W.hat, clusters = district.clusters, honesty = TRUE, num.trees = numtrees, 
                                 tune.parameters = "all")
+                                     
+      # Compute ATE 
+        CR.GRF.ATE <- average_treatment_effect(CR.GRF, target.sample = "all")
+                                     
+      # Compute HTE with corresponding 95% confidence intervals                               
         CR.GRF.pred <- predict(CR.GRF, estimate.variance = TRUE)
         CR.GRF.CATE <- CR.GRF.pred$predictions
         CR.GRF.CATE.SE <- sqrt(CR.GRF.pred$variance.estimates)
-    
-      # Find lower and upper bounds for 95% confidence intervals
         lower.CR.GRF <- CR.GRF.CATE - qnorm(0.975)*CR.GRF.CATE.SE
         upper.CR.GRF <- CR.GRF.CATE + qnorm(0.975)*CR.GRF.CATE.SE
               
@@ -208,18 +217,24 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
           hist(CR.GRF.CATE)
         }
     
-      # Compute ATE with corresponding 95% confidence intervals
-        CR.GRF.ATE <- average_treatment_effect(CR.GRF, target.sample = "all")
-    
       # See if the Cluster-Robust GRF succeeded in capturing heterogeneity by plotting the TOC and calculating the 95% confidence interval for the AUTOC
         CR.GRF.rate <- rank_average_treatment_effect(CR.GRF, CR.GRF.CATE, target = "AUTOC")
         if (boolean.plot == TRUE) {
           plot(CR.GRF.rate)
         }
   
-      # Assessing Cluster-Robust GRF fit using the Best Linear Predictor Approach [BLP]
-        CR.GRF.BLP <- test_calibration(CR.GRF)
+      # Assessing Cluster-Robust GRF fit using the Best Linear Predictor Approach [BLPredictor]
+        CR.GRF.BLPredictor <- test_calibration(CR.GRF)
     
+      # Assessing general CR.GRF heterogeneity using Differential ATE Approach
+        CR.GRF.high.effect <- (CR.GRF.CATE > median(CR.GRF.CATE))
+        CR.GRF.ATE.high <- average_treatment_effect(CR.GRF, subset = CR.GRF.high.effect)
+        CR.GRF.ATE.low <- average_treatment_effect(CR.GRF, subset = !CR.GRF.high.effect)
+        DiffATE.CR.GRF.mean <- CR.GRF.ATE.high[1] - CR.GRF.ATE.low[1]
+        DiffATE.CR.GRF.SE <- sqrt(CR.GRF.ATE.high[2]^2 + CR.GRF.ATE.low[2]^2)
+        lower.DiffATE.CR.GRF <- (DiffATE.CR.GRF.mean - (qnorm(0.975) * DiffATE.CR.GRF.SE))
+        upper.DiffATE.CR.GRF <- (DiffATE.CR.GRF.mean + (qnorm(0.975) * DiffATE.CR.GRF.SE))
+                                   
       # Test of heterogeneity using Differential ATE along each and every variable
         combined.X.median <- apply(combined.X, 2, median)
         results_DiffATE_CR.GRF = sapply(c(1:ncol(combined.X)), function(k) {
@@ -234,19 +249,25 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
         }
         colnames(results_DiffATE_CR.GRF) <- c("CR.GRF CATE below median", "CR.GRF CATE above median", "CR.GRF p-value difference")
         rownames(results_DiffATE_CR.GRF) <- colnames(combined.X)                
-                                     
+        sign.var.DiffATE_CR.GRF <- rownames((results_DiffATE_CR.GRF[,3] < 0.10))
+      
+      # Assessing GRF fit and heterogeneity using the Best Linear Projection Approach [BLProjection]
+        full.CR.GRF.BLProjection <- best_linear_projection(CR.GRF, X)
+        mostimportant.CR.GRF.BLProjection <- best_linear_projection(CR.GRF, X[,CR.GRF.mostimportant])       
+        sign.var.DiffATE_CR.GRF.BLProjection <- best_linear_projection(CR.GRF, X[,sign.var.DiffATE_CR.GRF])                           
+                                             
       # Plot the estimated CATE against the covariates with the highest variable importance, and the characteristic vector
         if (boolean.plot == TRUE) {
-          for (k in 1:length(CR.GRF.mostimportant)) {
+          for (k in 1:length(sign.var.DiffATE_CR.GRF)) {
             # Set all variables at their median values
               X.median <- apply(X, 2, median)
               
             # Create ordered vector of important variable
-              important.var.test = seq(min(X$CR.GRF.mostimportant[k]), max(X$CR.GRF.mostimportant[k]))
+              important.var.test = seq(min(X$sign.var.DiffATE_CR.GRF[k]), max(X$sign.var.DiffATE_CR.GRF[k]))
               
             # Create test set
               X.test <- matrix(rep(X.median, length(important.var.test)), length(important.var.test), byrow = TRUE)
-              X.test[,(CR.GRF.mostimportant[k])] = important.var.test
+              X.test[,(sign.var.DiffATE_CR.GRF[k])] = important.var.test
               
             # Predict new CATE estimates
               CR.GRF.pred.test <- predict(CR.GRF, X.test, estimate.variance = TRUE)
@@ -256,10 +277,10 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
               upper.CR.GRF.test <- CR.GRF.CATE.test + qnorm(0.975)*CR.GRF.CATE.SE.test
             
             # Make plot and save
-              pdf(fun_insert(x = filename.plot.CR.GRF.CATE, pos = (nchar(filename.plot.CR.GRF.CATE) - 4), insert = (CR.GRF.mostimportant[k])))
-              plot(X.test[,(CR.GRF.mostimportant[k])], CR.GRF.CATE.test, type = "l", ylim = range(min(lower.CR.GRF.test), max(upper.CR.GRF.test)), xlab = CR.GRF.mostimportant[k], ylab = "CATE")
-              lines(X.test[,(CR.GRF.mostimportant[k])], upper.CR.GRF.test, col = 1, lty = 2)
-              lines(X.test[,(CR.GRF.mostimportant[k])], lower.CR.GRF.test, col = 1, lty = 2)
+              pdf(fun_insert(x = filename.plot.CR.GRF.CATE, pos = (nchar(filename.plot.CR.GRF.CATE) - 4), insert = (sign.var.DiffATE_CR.GRF[k])))
+              plot(X.test[,(sign.var.DiffATE_CR.GRF[k])], CR.GRF.CATE.test, type = "l", ylim = range(min(lower.CR.GRF.test), max(upper.CR.GRF.test)), xlab = sign.var.DiffATE_CR.GRF[k], ylab = "CATE")
+              lines(X.test[,(sign.var.DiffATE_CR.GRF[k])], upper.CR.GRF.test, col = 1, lty = 2)
+              lines(X.test[,(sign.var.DiffATE_CR.GRF[k])], lower.CR.GRF.test, col = 1, lty = 2)
               grid()
               dev.off()
           }
@@ -295,6 +316,10 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
         LLCF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE,  
                               num.trees = numtrees, tune.parameters = "all")
     
+      # Compute ATE 
+        LLCF.ATE <- average_treatment_effect(LLCF, target.sample = "all")
+     
+      # Compute HTE with corresponding 95% confidence intervals                                  
         if (boolean.lambdas == FALSE) {
           # Predict: tuning without grid search over lambdas
             LLCF.pred <- predict(LLCF, linear.correction.variables = selected, ll.weight.penalty = TRUE, estimate.variance = TRUE)
@@ -314,8 +339,6 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
               }
             }
         }
-        
-      # Find lower and upper bounds for 95% confidence intervals
         lower.LLCF <- LLCF.CATE - qnorm(0.975)*LLCF.CATE.SE
         upper.LLCF <- LLCF.CATE + qnorm(0.975)*LLCF.CATE.SE
       
@@ -324,18 +347,24 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
           hist(LLCF.CATE)
         }
     
-      # Compute ATE with corresponding 95% confidence intervals
-        LLCF.ATE <- average_treatment_effect(LLCF, target.sample = "all")
-    
       # See if the Cluster-Robust GRF succeeded in capturing heterogeneity by plotting the TOC and calculating the 95% confidence interval for the AUTOC
         LLCF.rate <- rank_average_treatment_effect(LLCF, LLCF.CATE, target = "AUTOC")
         if (boolean.plot == TRUE) {
           plot(LLCF.rate)
         }
   
-      # Assessing Cluster-Robust GRF fit using the Best Linear Predictor Approach [BLP]
-        LLCF.BLP <- test_calibration(LLCF)
-        
+      # Assessing Cluster-Robust GRF fit using the Best Linear Predictor Approach [BLPredictor]
+        LLCF.BLPredictor <- test_calibration(LLCF)
+      
+      # Assessing general LLCF heterogeneity using Differential ATE Approach
+        LLCF.high.effect <- (LLCF.CATE > median(LLCF.CATE))
+        LLCF.ATE.high <- average_treatment_effect(LLCF, subset = LLCF.high.effect)
+        LLCF.ATE.low <- average_treatment_effect(LLCF, subset = !LLCF.high.effect)
+        DiffATE.LLCF.mean <- LLCF.ATE.high[1] - LLCF.ATE.low[1]
+        DiffATE.LLCF.SE <- sqrt(LLCF.ATE.high[2]^2 + LLCF.ATE.low[2]^2)
+        lower.DiffATE.LLCF <- (DiffATE.LLCF.mean - (qnorm(0.975) * DiffATE.LLCF.SE))
+        upper.DiffATE.LLCF <- (DiffATE.LLCF.mean + (qnorm(0.975) * DiffATE.LLCF.SE))
+                                                  
       # Test of heterogeneity using Differential ATE
         combined.X.median <- apply(combined.X, 2, median)
         results_DiffATE_LLCF = sapply(c(1:ncol(combined.X)), function(k) {
@@ -350,19 +379,25 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
         }
         colnames(results_DiffATE_LLCF) <- c("LLCF CATE below median", "LLCF CATE above median", "LLCF p-value difference")
         rownames(results_DiffATE_LLCF) <- colnames(combined.X)    
-                                      
+        sign.var.DiffATE_LLCF <- rownames((results_DiffATE_LLCF[,3] < 0.10))
+      
+      # Assessing LLCF fit and heterogeneity using the Best Linear Projection Approach [BLProjection]
+        full.LLCF.BLProjection <- best_linear_projection(LLCF, X)
+        mostimportant.LLCF.BLProjection <- best_linear_projection(LLCF, X[,LLCF.mostimportant])       
+        sign.var.DiffATE_LLCF.BLProjection <- best_linear_projection(LLCF, X[,sign.var.DiffATE_LLCF])                           
+                                        
       # Plot the estimated CATE against the covariates with the highest variable importance, and the characteristic vector
         if (boolean.plot == TRUE) {
-          for (k in 1:length(LLCF.mostimportant)) {
+          for (k in 1:length(sign.var.DiffATE_LLCF)) {
             # Set all variables at their median values
               X.median <- apply(X, 2, median)
               
             # Create ordered vector of important variable
-              important.var.test = seq(min(X$LLCF.mostimportant[k]), max(X$LLCF.mostimportant[k]))
+              important.var.test = seq(min(X$sign.var.DiffATE_LLCF[k]), max(X$sign.var.DiffATE_LLCF[k]))
               
             # Create test set
               X.test <- matrix(rep(X.median, length(important.var.test)), length(important.var.test), byrow = TRUE)
-              X.test[,(LLCF.mostimportant[k])] = important.var.test
+              X.test[,(sign.var.DiffATE_LLCF[k])] = important.var.test
               
             # Predict new CATE estimates
               LLCF.pred.test <- predict(LLCF, X.test, estimate.variance = TRUE)
@@ -372,22 +407,24 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
               upper.LLCF.test <- LLCF.CATE.test + qnorm(0.975)*LLCF.CATE.SE.test
             
             # Make plot and save
-              pdf(fun_insert(x = filename.plot.LLCF.CATE, pos = (nchar(filename.plot.LLCF.CATE) - 4), insert = (LLCF.mostimportant[k])))
-              plot(X.test[,(LLCF.mostimportant[k])], LLCF.CATE.test, type = "l", ylim = range(min(lower.LLCF.test), max(upper.LLCF.test)), xlab = LLCF.mostimportant[k], ylab = "CATE")
-              lines(X.test[,(LLCF.mostimportant[k])], upper.LLCF.test, col = 1, lty = 2)
-              lines(X.test[,(LLCF.mostimportant[k])], lower.LLCF.test, col = 1, lty = 2)
+              pdf(fun_insert(x = filename.plot.LLCF.CATE, pos = (nchar(filename.plot.LLCF.CATE) - 4), insert = (sign.var.DiffATE_LLCF[k])))
+              plot(X.test[,(sign.var.DiffATE_LLCF[k])], LLCF.CATE.test, type = "l", ylim = range(min(lower.LLCF.test), max(upper.LLCF.test)), xlab = sign.var.DiffATE_LLCF[k], ylab = "CATE")
+              lines(X.test[,(sign.var.DiffATE_LLCF[k])], upper.LLCF.test, col = 1, lty = 2)
+              lines(X.test[,(sign.var.DiffATE_LLCF[k])], lower.LLCF.test, col = 1, lty = 2)
               grid()
               dev.off()
           }
          }
         
-       results_BLP <-  data.frame(t(c(paste(round(GRF.BLP[1,1], 3), "(", round(GRF.BLP[1,2], 3), ")"),
-                                      paste(round(GRF.BLP[2,1], 3), "(", round(GRF.BLP[2,2], 3), ")"),
-                                      paste(round(CR.GRF.BLP[1,1], 3), "(", round(CR.GRF.BLP[1,2], 3), ")"),
-                                      paste(round(CR.GRF.BLP[2,1], 3), "(", round(CR.GRF.BLP[2,2], 3), ")"),
-                                      paste(round(LLCF.BLP[1,1], 3), "(", round(LLCF.BLP[1,2], 3), ")"),
-                                      paste(round(LLCF.BLP[2,1], 3), "(", round(LLCF.BLP[2,2], 3), ")"))))
-       colnames(results_BLP) <- c("BLP[1] GRF", "BLP[2] GRF", "BLP[1] CR.GRF", "BLP[2] CR.GRF", "BLP[1] LLCF", "BLP[2] LLCF")
+       results_BLPredictor <-  data.frame(t(c(paste(round(GRF.BLPredictor[1,1], 3), "(", round(GRF.BLPredictor[1,2], 3), ")"),
+                                      paste(round(GRF.BLPredictor[2,1], 3), "(", round(GRF.BLPredictor[2,2], 3), ")"),
+                                      paste(round(CR.GRF.BLPredictor[1,1], 3), "(", round(CR.GRF.BLPredictor[1,2], 3), ")"),
+                                      paste(round(CR.GRF.BLPredictor[2,1], 3), "(", round(CR.GRF.BLPredictor[2,2], 3), ")"),
+                                      paste(round(LLCF.BLPredictor[1,1], 3), "(", round(LLCF.BLPredictor[1,2], 3), ")"),
+                                      paste(round(LLCF.BLPredictor[2,1], 3), "(", round(LLCF.BLPredictor[2,2], 3), ")"))))
+       colnames(results_BLPredictor) <- c("BLPredictor[1] GRF", "BLPredictor[2] GRF", 
+                                  "BLPredictor[1] CR.GRF", "BLPredictor[2] CR.GRF", 
+                                  "BLPredictor[1] LLCF", "BLPredictor[2] LLCF")
                                       
        results_DiffATE_General <- data.frame(t(c(paste(round(GRF.ATE.high[1], 3), "(", round(GRF.ATE.high[2], 3), ")"),
                                           paste(round(GRF.ATE.low[1], 3), "(", round(GRF.ATE.low[2], 3), ")"),
@@ -409,7 +446,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
              "variable.importance.GRF" = GRF.varimp.ordered,
              "variable.importance.CR.GRF" = CR.GRF.varimp.ordered,
              "variable.importance.LLCF" = LLCF.varimp.ordered,
-             "results_BLP" = results_BLP)
+             "results_BLPredictor" = results_BLPredictor)
     
     })
                     
