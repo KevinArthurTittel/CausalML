@@ -117,4 +117,4 @@ set.seed(123)
   rownames(results_ATE) <- rep(c("profit", "capital", "log of monhtly HH income"), 4)
 
 
-write.csv(results[["results_ATE"]], file = "Table 2 (Field et al., 2013).xlsx")
+write.csv(results_ATE, file = "Table 2 (Field et al., 2013).xlsx")
