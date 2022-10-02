@@ -11,55 +11,19 @@ library(ggplot2)
 library(glmnet)
 set.seed(123)
 
-# Import and prepare Microfinance data set (Field et al., 2013)
-  Grace_Period_Data <- read_dta("Downloads/112672-V1/Grace-Period-Data.dta")
-  Grace_Period_Data <- as.data.frame(Grace_Period_Data)
-
-  # Appoint treatment assignment and outcome variables
-    W <- Grace_Period_Data$sec_treat
-    W <- as.vector(W)
-
-  # Create a numerical vector of the character group name vector
-    loangroups <- as.numeric(factor(Grace_Period_Data$sec_group_name))
-
-  # Standardize the continuous variables
-    Grace_Period_Data$Years_Education_C <- scale(Grace_Period_Data$Years_Education_C)
-    Grace_Period_Data$Age_C <- scale(Grace_Period_Data$Age_C)
-    Grace_Period_Data$SEI <- scale(Grace_Period_Data$SEI)
-    Grace_Period_Data$HH_Size_C <- scale(Grace_Period_Data$HH_Size_C)
-
-  # Appoint the control variables matrix
-    X <- Grace_Period_Data[,c(2,6,8:18)]
-    colnames(X) <- c("Loan.Officer", "Stratification", "Age", "Married", "Literate", "Muslim", "HH.Size", "Years.Education", "Shock", "Has.Business",
-                 "Financial.Control", "Home.Owner", "No.Drain")
-                 
-  # Create loan group dummies (as in original analysis) to be added to control variables matrix
-    loansize1 <- as.integer(c(Grace_Period_Data$sec_loanamount == 4000))
-    loansize2 <- as.integer(c(Grace_Period_Data$sec_loanamount == 5000))
-    loansize3 <- as.integer(c(Grace_Period_Data$sec_loanamount == 6000))
-    loansize4 <- as.integer(c(Grace_Period_Data$sec_loanamount == 8000))
-    loansize5 <- as.integer(c(Grace_Period_Data$sec_loanamount == 9000))
-    loansize6 <- as.integer(c(Grace_Period_Data$sec_loanamount == 10000))
-    loansizematrix <- cbind(loansize1, loansize2, loansize3, loansize4,
-                        loansize5, loansize6)
-
-  # Combine all the control covariates in one large matrix
-    X <- as.matrix(cbind(X, loansizematrix))
-
 # Initialize parameters
-  numtrees <- 2000
-  index <- c(1:5)
-  dep.var <- 50 # 50 = monhtly profit, 51 = log of monthly HH income, 52 = capital
-  lambdas <- c(0, 0.1, 0.3, 0.5, 0.7, 1, 1.5)
-  boolean.lambdas <- FALSE
-  boolean.plot <- FALSE
-  version <- 1 # 1 = only current characteristics in X-matrix, 2 = all characteristics in X-matrix
+  numtrees <- 2000 # Set to 1000 or 5000 to perform sensitivity analysis.
+  index <- c(1:5) # Concerns 5 characteristics; do not adjust.
+  dep.var <- 50 # Concerns dependent variable; set to 50 for monhtly profit, 51 for log of monthly HH income, or 52 for capital.
+  lambdas <- c(0, 0.1, 0.3, 0.5, 0.7, 1, 1.5) # Concerns ridge penalty parameters; do not adjust.
+  boolean.lambdas <- FALSE # Set to TRUE to use lambdas instead of automatic penalty tuning.
+  boolean.plot <- FALSE # Set to TRUE to make various plots of interest.
   filename.plot.GRF.CATE <- "GRF CATE .pdf"
   filename.plot.CR.GRF.CATE <- "CR.GRF CATE .pdf"
   filename.plot.LLCF.CATE <- "LLCF CATE .pdf"
   
 # Estimation procedure
-run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, version) {
+run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas) {
   basic.results = sapply(index, function(i) {
     Y <- Grace_Period_Data[,(dep.var)]
     Y <- as.vector(Y)
@@ -68,11 +32,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
       characteristic <- Grace_Period_Data[,(74+i)]
       
     # Appoint final X-matrix
-      if (version == 1) {
-        current.X <- as.matrix(cbind(X, characteristic))
-      } else {
-        current.X <- as.matrix(cbind(X, X[,75:79]))
-      }
+      current.X <- as.matrix(cbind(X, characteristic))
       
     # Determine missing values
       missingvalues <- as.integer(is.na(Y)) + as.integer(is.na(characteristic))
@@ -108,11 +68,14 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
       # Implement GRF
         GRF <- causal_forest(current.X[,selected.vars], current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees, 
                              honesty = TRUE, tune.parameters = "all")
+                             
+      # Compute ATE
+        GRF.ATE <- average_treatment_effect(GRF, target.sample = "all")
+        
+      # Compute HTE with corresponding 95% confidence intervals  
         GRF.pred <- predict(GRF, estimate.variance = TRUE)
         GRF.CATE <- GRF.pred$predictions
         GRF.CATE.SE <- sqrt(GRF.pred$variance.estimates)
-  
-      # Find lower and upper bounds for 95% confidence intervals
         lower.GRF <- GRF.CATE - qnorm(0.975)*GRF.CATE.SE
         upper.GRF <- GRF.CATE + qnorm(0.975)*GRF.CATE.SE
     
@@ -120,9 +83,6 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
         if (boolean.plot == TRUE) {
           hist(GRF.CATE)
         }
-    
-      # Compute ATE with corresponding 95% confidence intervals
-        GRF.ATE <- average_treatment_effect(GRF, target.sample = "all")
     
       # See if the GRF succeeded in capturing heterogeneity by plotting the TOC and calculating the 95% confidence interval for the AUTOC
         GRF.rate <- rank_average_treatment_effect(GRF, GRF.CATE, target = "AUTOC")
@@ -187,11 +147,14 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
       # Implement Cluster-Robust GRF
         CR.GRF <- causal_forest(current.X[,selected.vars], current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, clusters = current.loangroups, honesty = TRUE, num.trees = numtrees, 
                                 tune.parameters = "all")
+                                
+      # Compute ATE 
+        CR.GRF.ATE <- average_treatment_effect(CR.GRF, target.sample = "all")
+        
+      # Compute HTE with corresponding 95% confidence intervals
         CR.GRF.pred <- predict(CR.GRF, estimate.variance = TRUE)
         CR.GRF.CATE <- CR.GRF.pred$predictions
         CR.GRF.CATE.SE <- sqrt(CR.GRF.pred$variance.estimates)
-    
-      # Find lower and upper bounds for 95% confidence intervals
         lower.CR.GRF <- CR.GRF.CATE - qnorm(0.975)*CR.GRF.CATE.SE
         upper.CR.GRF <- CR.GRF.CATE + qnorm(0.975)*CR.GRF.CATE.SE
               
@@ -199,10 +162,7 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
         if (boolean.plot == TRUE) {
           hist(CR.GRF.CATE)
         }
-    
-      # Compute ATE with corresponding 95% confidence intervals
-        CR.GRF.ATE <- average_treatment_effect(CR.GRF, target.sample = "all")
-    
+        
       # See if the Cluster-Robust GRF succeeded in capturing heterogeneity by plotting the TOC and calculating the 95% confidence interval for the AUTOC
         CR.GRF.rate <- rank_average_treatment_effect(CR.GRF, CR.GRF.CATE, target = "AUTOC")
         if (boolean.plot == TRUE) {
@@ -279,6 +239,10 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
         LLCF <- causal_forest(current.X, current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE,  
                               num.trees = numtrees, tune.parameters = "all")
     
+      # Compute ATE 
+        LLCF.ATE <- average_treatment_effect(LLCF, target.sample = "all")
+       
+      # Compute HTE with corresponding 95% confidence intervals 
         if (boolean.lambdas == FALSE) {
           # Predict: tuning without grid search over lambdas
             LLCF.pred <- predict(LLCF, linear.correction.variables = selected, ll.weight.penalty = TRUE, estimate.variance = TRUE)
@@ -298,8 +262,6 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
               }
             }
         }
-        
-      # Find lower and upper bounds for 95% confidence intervals
         lower.LLCF <- LLCF.CATE - qnorm(0.975)*LLCF.CATE.SE
         upper.LLCF <- LLCF.CATE + qnorm(0.975)*LLCF.CATE.SE
       
@@ -307,9 +269,6 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
         if (boolean.plot == TRUE) {
           hist(LLCF.CATE)
         }
-    
-      # Compute ATE with corresponding 95% confidence intervals
-        LLCF.ATE <- average_treatment_effect(LLCF, target.sample = "all")
     
       # See if the Cluster-Robust GRF succeeded in capturing heterogeneity by plotting the TOC and calculating the 95% confidence interval for the AUTOC
         LLCF.rate <- rank_average_treatment_effect(LLCF, LLCF.CATE, target = "AUTOC")
@@ -321,12 +280,11 @@ run_method = function(numtrees, index, lambdas, boolean.plot, boolean.lambdas, v
         LLCF.BLP <- test_calibration(LLCF)
         
       # Test of heterogeneity using Differential ATE
-        # Test of heterogeneity using Differential ATE
-          LLCF.ATE.charact <- average_treatment_effect(LLCF, target.sample = "all", subset = (current.characteristic == 1))
-          LLCF.ATE.not.charact <- average_treatment_effect(LLCF, target.sample = "all", subset = !(current.characteristic == 1))
-          LLCF.AIPW.charact <- get_scores(LLCF, subset = (current.characteristic == 1))
-          LLCF.AIPW.not.charact <- get_scores(LLCF, subset = !(current.characteristic == 1))
-          DiffATE.LLCF.test <- t.test(LLCF.AIPW.charact, LLCF.AIPW.not.charact, alternative = "two.sided", var.equal = FALSE)
+        LLCF.ATE.charact <- average_treatment_effect(LLCF, target.sample = "all", subset = (current.characteristic == 1))
+        LLCF.ATE.not.charact <- average_treatment_effect(LLCF, target.sample = "all", subset = !(current.characteristic == 1))
+        LLCF.AIPW.charact <- get_scores(LLCF, subset = (current.characteristic == 1))
+        LLCF.AIPW.not.charact <- get_scores(LLCF, subset = !(current.characteristic == 1))
+        DiffATE.LLCF.test <- t.test(LLCF.AIPW.charact, LLCF.AIPW.not.charact, alternative = "two.sided", var.equal = FALSE)
 
       # Plot the estimated CATE against the covariates with the highest variable importance, and the characteristic vector
         if (boolean.plot == TRUE) {
@@ -397,6 +355,6 @@ fun_insert <- function(x, pos, insert) {
        x)
 }
 
-results = run_method(numtrees, index, lambdas, boolean.plot, boolean.lambdas, version)
+results = run_method(numtrees, index, lambdas, boolean.plot, boolean.lambdas)
 results_table5 <- list('Sheet1' = results[["results_BLP"]], 'Sheet2' = results[["results_DiffATE"]])
 write.xlsx(results_table5, file = "Table 5 (Field et al., 2013).xlsx")
