@@ -25,10 +25,13 @@ set.seed(123)
     ########### GRF ###########
     ###########################
     
+      # For GRF we create the X matrix including district-specific dummies
+        current.X <- cbind(X, dummies.district.clusters)
+
       # Grow preliminary forests for (W, X) and (Y, X) separately
-        forest.W <- regression_forest(X, W, num.trees = numtrees, honesty = TRUE, tune.parameters = "all")
+        forest.W <- regression_forest(current.X, W, num.trees = numtrees, honesty = TRUE, tune.parameters = "all")
         W.hat <- predict(forest.W)$predictions
-        forest.Y <- regression_forest(X, Y, num.trees = numtrees, honesty = TRUE, tune.parameters = "all")
+        forest.Y <- regression_forest(current.X, Y, num.trees = numtrees, honesty = TRUE, tune.parameters = "all")
         Y.hat <- predict(forest.Y)$predictions
         
       # Compute the variable importance
@@ -37,12 +40,12 @@ set.seed(123)
         GRF.mostimportant <- colnames(X)[(GRF.varimp.ordered[1:4])] # 4 most important variables for splitting
         
       # Select variables to include using preliminary GRF
-        prelim.GRF <- causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees, honesty = TRUE)
+        prelim.GRF <- causal_forest(current.X, Y, W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees, honesty = TRUE)
         prelim.GRF.varimp <- variable_importance(prelim.GRF)
         selected.vars <- which(prelim.GRF.varimp / mean(prelim.GRF.varimp) > 0.2)
   
       # Implement GRF
-        GRF <- causal_forest(X[,selected.vars], Y, W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees, 
+        GRF <- causal_forest(current.X[,selected.vars], Y, W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees, 
                              honesty = TRUE, tune.parameters = "all")
     
       # Compute ATE 
@@ -78,7 +81,7 @@ set.seed(123)
         lower.DiffATE.GRF <- (DiffATE.GRF.mean - (qnorm(0.975) * DiffATE.GRF.SE))
         upper.DiffATE.GRF <- (DiffATE.GRF.mean + (qnorm(0.975) * DiffATE.GRF.SE))
     
-      # Test of heterogeneity using Differential ATE along each and every variable
+      # Test of heterogeneity using Differential ATE along each variable, except the district dummies
         combined.X.median <- apply(combined.X, 2, median)
         results_DiffATE_GRF = sapply(c(1:ncol(combined.X)), function(k) {
           GRF.ATE.abovemedian <- average_treatment_effect(GRF, target.sample = "all", subset = (combined.X[,k] >= combined.X.median[k]))
