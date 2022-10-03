@@ -1,5 +1,5 @@
 # Import and prepare Fox News data set (DellaVigna and Kaplan, 2007)
-  Fox_News_Data <- read_stata("C:/Users/481044kt/AppData/Local/Temp/2/FoxNewsFinalDataQJE_zOeIzx")
+  Fox_News_Data <- read_dta("Downloads/FoxNewsDataQJEMay07/FoxNewsFinalDataQJE.dta")
   Fox_News_Data <- as.data.frame(Fox_News_Data)
 
   # Appoint main outcome variable
@@ -35,9 +35,16 @@
                                   "Decile 6 no. potential subscribers", "Decile 7 no. potential subscribers", "Decile 8 no. potential subscribers", 
                                   "Decile 9 no. potential subscribers", "Decile 10 no. potential subscribers")
 
-
     X <- as.matrix(cbind(demographic.controls.2000, demographic.controls.Diff19962000, cable.controls))
 
+  # Create dummy variables for the different districts
+    dummies.district.clusters <- matrix(0, nrow = length(district.clusters), ncol = length(unique(district.clusters)))
+    colnames(dummies.district.clusters) <- c(unique(district.clusters))
+    for (i in 1:length(district.clusters)) {
+      dummies.district.clusters[i,toString(district.clusters[i])] <- 1
+    }
+  
+  # Create a matrix for the remaining variables of interest
     remaining.variables <- Fox_News_Data[,c(14,59, 204, 205)]
     colnames(remaining.variables) <- c("No. cable channels available", "NumberPotentialSubscribers", "Swing district", "Republican district")
 
