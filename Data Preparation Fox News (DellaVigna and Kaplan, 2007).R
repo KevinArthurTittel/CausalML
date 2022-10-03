@@ -57,4 +57,5 @@
     X <- X[indices,]
     W <- W[indices]
     district.clusters <- district.clusters[indices]
+    district.dummies <- district.dummies[indices,]
     remaining.variables <- remaining.variables[indices,]
