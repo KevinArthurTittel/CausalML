@@ -89,7 +89,7 @@ set.seed(123)
           data.frame(t(c(paste(round(GRF.ATE.belowmedian[1], 3), "(", round(GRF.ATE.belowmedian[2], 3), ")"),
                          paste(round(GRF.ATE.abovemedian[1], 3), "(", round(GRF.ATE.abovemedian[2], 3), ")"),
                          paste(round(DiffATE.GRF.test$p.value, 3)))))
-        }
+        )}
         colnames(results_DiffATE_GRF) <- c("GRF CATE below median", "GRF CATE above median", "GRF p-value difference")
         rownames(results_DiffATE_GRF) <- colnames(combined.X)                           
         sign.var.DiffATE_GRF <- rownames((results_DiffATE_GRF[,3] < 0.10))
