@@ -316,7 +316,11 @@ set.seed(123)
               dev.off()
           }
          }
-         
+     
+    ############################
+    ###### Update results ######
+    ############################
+    
         results_BLP <- rbind(results_BLP, 
                        data.frame(t(c(paste(round(GRF.BLP[1,1], 3), "(", round(GRF.BLP[1,2], 3), ")"),
                                       paste(round(GRF.BLP[2,1], 3), "(", round(GRF.BLP[2,2], 3), ")"),
