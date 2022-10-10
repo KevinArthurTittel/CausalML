@@ -157,7 +157,7 @@ for (b in 1:B) {
     ############################
     
         results.GRF[[b]] <- cbind(current.X.test[], GRF.CATE)
-        results.CR.GRF[[b]] <- cbind(X.test[], CR.GRF.CATE)
+        results.CR.GRF[[b]] <- cbind(Xtest[], CR.GRF.CATE)
         results.LLCF[[b]] <- cbind(current.X.test[], LLCF.CATE)
         
  }
