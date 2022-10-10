@@ -134,14 +134,14 @@ for (b in 1:B) {
       # Compute HTE with corresponding 95% confidence intervals                                  
         if (boolean.lambdas == FALSE) {
           # Predict: tuning without grid search over lambdas
-            LLCF.pred <- predict(LLCF, newdata = current.X.test[,selected.vars], linear.correction.variables = selected, ll.weight.penalty = TRUE, estimate.variance = TRUE, ll.lambda = 0.1)
+            LLCF.pred <- predict(LLCF, newdata = current.X.test, linear.correction.variables = selected, ll.weight.penalty = TRUE, estimate.variance = TRUE, ll.lambda = 0.1)
             LLCF.CATE <- LLCF.pred$predictions
             LLCF.CATE.SE <- sqrt(LLCF.pred$variance.estimates)
         } else {
           # Predict: tuning done using set of lambdas
             LLCF.mse.old <- +Inf
             for (l in length(lambdas)) {
-              LLCF.CATE.old <- predict(GRF, newdata = current.X.test[,selected.vars], linear.correction.variables = selected, ll.lambda = lambdas[l], ll.weight.penalty = TRUE, estimate.variance = TRUE)
+              LLCF.CATE.old <- predict(GRF, newdata = current.X.test, linear.correction.variables = selected, ll.lambda = lambdas[l], ll.weight.penalty = TRUE, estimate.variance = TRUE)
               predictions <- LLCF.CATE.old$predictions
               LLCF.mse.new <- mean((predictions - mean(predictions))**2)
               if (LLCF.mse.new < LLCF.mse.old) {
