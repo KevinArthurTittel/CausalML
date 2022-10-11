@@ -53,7 +53,8 @@ set.seed(123)
   subsample.control.group <- sample(control.group, size = 89958, replace = FALSE)
   
 # Split the data into a balanced test set (2/5th treated, 3/5th control) of 25000 observations and balanced training set of 100000 observations
-  indices.test <- c(treatment.group[1:10000], subsample.control.group[1:15000])
+  # indices.test <- c(treatment.group[1:10000], subsample.control.group[1:15000])
+  indices.test <-  c(treatment.group[1:800], subsample.control.group[1:1200]) 
   indices.training <- c(treatment.group[10001:50000], subsample.control.group[15001:75000])
   X.test <- X[indices.test,]
   W.test <- W[indices.test]
@@ -64,11 +65,12 @@ set.seed(123)
   current.X.test <- cbind(X.test, dummies.county.clusters.test)
   
 # Initialize parameters
-  num.reps = 10
+  num.reps = 20
   numtrees <- 2000 # Set to 1000 or 5000 to perform sensitivity analysis.
 
 # Different training sample sizes
-  training.sample.size <- c(2000, 5000, 10000, 20000, 30000)
+  training.sample.size <- c(400, 800, 1200, 1500, 2000) 
+  # training.sample.size <- c(2000, 5000, 10000, 20000, 30000)
   
 run_method = function(training.sample.size, num.reps) {
   results = sapply(training.sample.size, function(n.train) {  
@@ -165,7 +167,7 @@ run_method = function(training.sample.size, num.reps) {
           LLCF <- causal_forest(X.train, Ynew.train, W.train, Y.hat = Y.hat, W.hat = W.hat, honesty = TRUE, num.trees = numtrees)
 
         # Compute HTE with corresponding 95% confidence intervals                                  
-          LLCF.oob <- predict(LLCF, linear.correction.variables = selected, ll.weight.penalty = TRUE, ll.lambda = 0.1, estimate.variance = TRUE)
+          LLCF.oob <- predict(LLCF, linear.correction.variables = selected, ll.weight.penalty = TRUE, estimate.variance = TRUE)
           LLCF.pred <- predict(LLCF, X.test, linear.correction.variables = selected, ll.weight.penalty = TRUE, estimate.variance = TRUE)
           LLCF.CATE.oob <- LLCF.oob$predictions
           LLCF.CATE <- LLCF.pred$predictions
@@ -192,7 +194,6 @@ run_method = function(training.sample.size, num.reps) {
 }
 
 results = run_method(training.sample.size, num.reps)
-
 
 
 
