@@ -60,19 +60,13 @@ set.seed(123)
   Ynew.test <- Ynew[indices.test]
   county.clusters.test <- county.clusters[indices.test]
   dummies.county.clusters.test <- dummies.county.clusters[indices.test,]
-  tau.test <- tauy[indices.test]
+  tau.test <- tau[indices.test]
   current.X.test <- cbind(X.test, dummies.county.clusters.test)
   
 # Initialize parameters
-  num.reps = 100
+  num.reps = 10
   numtrees <- 2000 # Set to 1000 or 5000 to perform sensitivity analysis.
-  lambdas <- c(0, 0.1, 0.3, 0.5, 0.7, 1, 1.5) # Concerns ridge penalty parameters; do not adjust.
-  boolean.lambdas <- FALSE # Set to TRUE to use lambdas instead of automatic penalty tuning.
-  boolean.plot <- FALSE # Set to TRUE to make various plots of interest.
-  filename.plot.GRF.CATE <- "GRF CATE .pdf"
-  filename.plot.CR.GRF.CATE <- "CR.GRF CATE .pdf"
-  filename.plot.LLCF.CATE <- "LLCF CATE .pdf"  
-  
+
 # Different training sample sizes
   training.sample.size <- c(2000, 5000, 10000, 20000, 30000)
   
@@ -153,9 +147,9 @@ run_method = function(training.sample.size, num.reps) {
       ############################
         
         # Grow preliminary forests for (W, X) and (Y, X) separately
-          forest.W <- ll_regression_forest(X.train, W.train, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, num.trees = numtrees)
+          forest.W <- ll_regression_forest(as.matrix(X.train), as.vector(W.train), honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, num.trees = 1000)
           W.hat <- predict(forest.W)$predictions
-          forest.Y <- ll_regression_forest(X.train, Ynew.train, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, num.trees = numtrees)
+          forest.Y <- ll_regression_forest(as.matrix(X.train), as.vector(Ynew.train), honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, num.trees = 1000)
           Y.hat <- predict(forest.Y)$predictions
           
         # Select variables to include using Lasso feature selection
@@ -172,7 +166,7 @@ run_method = function(training.sample.size, num.reps) {
 
         # Compute HTE with corresponding 95% confidence intervals                                  
           LLCF.oob <- predict(LLCF, linear.correction.variables = selected, ll.weight.penalty = TRUE, ll.lambda = 0.1, estimate.variance = TRUE)
-          LLCF.pred <- predict(LLCF, current.X.test[,selected.vars], linear.correction.variables = selected, ll.weight.penalty = TRUE, ll.lambda = 0.1, estimate.variance = TRUE)
+          LLCF.pred <- predict(LLCF, X.test, linear.correction.variables = selected, ll.weight.penalty = TRUE, estimate.variance = TRUE)
           LLCF.CATE.oob <- LLCF.oob$predictions
           LLCF.CATE <- LLCF.pred$predictions
           LLCF.CATE.SE.oob <- sqrt(LLCF.oob$variance.estimates)
@@ -198,5 +192,7 @@ run_method = function(training.sample.size, num.reps) {
 }
 
 results = run_method(training.sample.size, num.reps)
+
+
 
 
