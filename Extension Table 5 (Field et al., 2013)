@@ -50,9 +50,7 @@ set.seed(123)
     ########### GRF ###########
     ###########################
     
-      # Grow preliminary forests for (W, X) and (Y, X) separately
-        forest.W <- regression_forest(current.X, current.W, num.trees = numtrees, honesty = TRUE, tune.parameters = "all")
-        W.hat <- predict(forest.W)$predictions
+      # Grow preliminary forests for (Y, X) 
         forest.Y <- regression_forest(current.X, current.Y, num.trees = numtrees, honesty = TRUE, tune.parameters = "all")
         Y.hat <- predict(forest.Y)$predictions
         
@@ -62,12 +60,12 @@ set.seed(123)
         GRF.mostimportant <- c(GRF.mostimportant, colnames(characteristic))
         
       # Select variables to include using preliminary GRF
-        prelim.GRF <- causal_forest(current.X, current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees, honesty = TRUE)
+        prelim.GRF <- causal_forest(current.X, current.Y, current.W, num.trees = numtrees, honesty = TRUE)
         prelim.GRF.varimp <- variable_importance(prelim.GRF)
         selected.vars <- which(prelim.GRF.varimp / mean(prelim.GRF.varimp) > 0.2)
   
       # Implement GRF
-        GRF <- causal_forest(current.X[,selected.vars], current.Y, current.W, Y.hat = Y.hat, W.hat = W.hat, num.trees = numtrees, 
+        GRF <- causal_forest(current.X[,selected.vars], current.Y, current.W, num.trees = numtrees, 
                              honesty = TRUE, tune.parameters = "all")
                              
       # Compute ATE
