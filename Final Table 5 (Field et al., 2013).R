@@ -14,7 +14,7 @@ set.seed(123)
 # Initialize parameters
   numtrees <- 2000 # Set to 1000 or 5000 to perform sensitivity analysis.
   index <- c(1:5) # Concerns 5 characteristics; do not adjust.
-  dep.var <- 50 # Concerns dependent variable; set to 50 for monhtly profit, 51 for log of monthly HH income, or 52 for capital.
+  dep.var <- 50 # Concerns dependent variable; set to 50 for monhtly profit, 51 for capital, or 52 for log of monthly HH income
   lambdas <- c(0, 0.1, 0.3, 0.5, 0.7, 1, 1.5) # Concerns ridge penalty parameters; do not adjust.
   boolean.lambdas <- FALSE # Set to TRUE to use lambdas instead of automatic penalty tuning.
   boolean.plot <- FALSE # Set to TRUE to make various plots of interest.
