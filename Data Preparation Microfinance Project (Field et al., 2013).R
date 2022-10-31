@@ -7,7 +7,7 @@
     W <- as.vector(W)
 
   # Create a numerical vector of the character group name vector
-    loangroups <- as.numeric(factor(Grace_Period_Data$sec_group_name))
+    loangroups <- as.numeric(factor(Grace_Period_Data$sec_loanamount))
 
   # Standardize the continuous variables
     Grace_Period_Data$Years_Education_C <- scale(Grace_Period_Data$Years_Education_C)
@@ -30,5 +30,3 @@
     loansizematrix <- cbind(loansize1, loansize2, loansize3, loansize4,
                         loansize5, loansize6)
 
-  # Combine all the control covariates in one large matrix
-    X <- as.matrix(cbind(X, loansizematrix))
