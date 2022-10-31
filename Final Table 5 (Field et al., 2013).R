@@ -12,7 +12,7 @@ library(glmnet)
 set.seed(123)
 
 # Initialize parameters
-  numtrees <- 2000 # Set to 1000 or 5000 to perform sensitivity analysis.
+  numtrees <- 4000 # Set to 2000 or 8000 to perform sensitivity analysis.
   index <- c(1:5) # Concerns 5 characteristics; do not adjust.
   dep.var <- 50 # Concerns dependent variable; set to 50 for monhtly profit, 51 for capital, or 52 for log of monthly HH income
   lambdas <- c(0, 0.1, 0.3, 0.5, 0.7, 1, 1.5) # Concerns ridge penalty parameters; do not adjust.
@@ -31,24 +31,24 @@ set.seed(123)
     
     # Appoint characteristic for Table 5 (Field et al., 2013)
       characteristic <- Grace_Period_Data[,(74+i)]
-      
-    # Appoint final X-matrix
-      current.X <- as.matrix(cbind(X, characteristic))
-      
-    # Determine missing values
-      missingvalues <- as.integer(is.na(Y)) + as.integer(is.na(characteristic))
-      missingvalues[missingvalues == 2] <- 1
-  
-    # Remove the observations for which Y and/or the characteristic for Table 5 has an NA value
-      current.X <- X[!missingvalues,]
-      current.W <- W[!missingvalues]
-      current.loangroups <- loangroups[!missingvalues]
-      current.characteristic <- characteristic[!missingvalues]
-      current.Y <- Y[!missingvalues]
   
     ###########################
     ########### GRF ###########
     ###########################
+    
+      # Appoint final X-matrix
+        current.X <- as.matrix(cbind(X, loansizematrix, characteristic))
+      
+      # Determine missing values
+        missingvalues <- as.integer(is.na(Y)) + as.integer(is.na(characteristic))
+        missingvalues[missingvalues == 2] <- 1
+  
+      # Remove the observations for which Y and/or the characteristic for Table 5 has an NA value
+        current.X <- current.X[!missingvalues,]
+        current.W <- W[!missingvalues]
+        current.loangroups <- loangroups[!missingvalues]
+        current.characteristic <- characteristic[!missingvalues]
+        current.Y <- Y[!missingvalues]
     
       # Grow preliminary forests for (Y, X) 
         forest.Y <- regression_forest(current.X, current.Y, num.trees = numtrees, honesty = TRUE, tune.parameters = "all")
@@ -88,8 +88,22 @@ set.seed(123)
     #### Cluster-Robust GRF ####
     ############################
       
+      # Appoint final X-matrix
+        current.X <- as.matrix(cbind(X, characteristic))
+      
+      # Determine missing values
+        missingvalues <- as.integer(is.na(Y)) + as.integer(is.na(characteristic))
+        missingvalues[missingvalues == 2] <- 1
+  
+      # Remove the observations for which Y and/or the characteristic for Table 5 has an NA value
+        current.X <- current.X[!missingvalues,]
+        current.W <- W[!missingvalues]
+        current.loangroups <- loangroups[!missingvalues]
+        current.characteristic <- characteristic[!missingvalues]
+        current.Y <- Y[!missingvalues]
+    
       # Grow preliminary forests for (Y, X) 
-        forest.Y <- regression_forest(current.X, current.Y, num.trees = numtrees, honesty = TRUE, clusters = current.loangroups, tune.parameters = "all")
+        forest.Y <- regression_forest(current.X, current.Y, num.trees = numtrees, honesty = TRUE, clusters = current.loangroups)
         
       # Select variables to include using preliminary Cluster-Robust GRF
         prelim.CR.GRF <- causal_forest(current.X, current.Y, current.W, honesty = TRUE, clusters = current.loangroups, num.trees = numtrees)
@@ -102,8 +116,7 @@ set.seed(123)
         CR.GRF.mostimportant <- c(CR.GRF.mostimportant, colnames(characteristic))
         
       # Implement Cluster-Robust GRF
-        CR.GRF <- causal_forest(current.X[,selected.vars], current.Y, current.W, clusters = current.loangroups, honesty = TRUE, num.trees = numtrees, 
-                                tune.parameters = "all")
+        CR.GRF <- causal_forest(current.X[,selected.vars], current.Y, current.W, clusters = current.loangroups, honesty = TRUE, num.trees = numtrees)
                                 
       # Compute ATE 
         CR.GRF.ATE <- average_treatment_effect(CR.GRF, target.sample = "all")
@@ -126,12 +139,26 @@ set.seed(123)
     ########### LLCF ###########
     ############################
     
+      # Appoint final X-matrix
+        current.X <- as.matrix(cbind(X, loansizematrix, characteristic))
+      
+      # Determine missing values
+        missingvalues <- as.integer(is.na(Y)) + as.integer(is.na(characteristic))
+        missingvalues[missingvalues == 2] <- 1
+  
+      # Remove the observations for which Y and/or the characteristic for Table 5 has an NA value
+        current.X <- current.X[!missingvalues,]
+        current.W <- W[!missingvalues]
+        current.loangroups <- loangroups[!missingvalues]
+        current.characteristic <- characteristic[!missingvalues]
+        current.Y <- Y[!missingvalues]
+    
       # Grow preliminary forests for (W, X) and (Y, X) separately
         forest.W <- ll_regression_forest(current.X, current.W, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, 
-                                         num.trees = numtrees)
+                                         num.trees = 1000)
         W.hat <- predict(forest.W)$predictions
         forest.Y <- ll_regression_forest(current.X, current.Y, honesty = TRUE, enable.ll.split = TRUE, ll.split.weight.penalty = TRUE, 
-                                         num.trees = numtrees)
+                                         num.trees = 1000)
         Y.hat <- predict(forest.Y)$predictions
     
       # Compute the variable importance
