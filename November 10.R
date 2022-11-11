@@ -9,6 +9,8 @@ library(foreign)
 library(haven)
 install.packages("glmnet")
 library(glmnet)
+install.packages("resample")
+library(resample)
 library(stats4)
 set.seed(123)
 
@@ -62,12 +64,13 @@ training.subsample <- c(treatment.group[1:ceiling((0.8*149930*0.4))], subsample.
 test.subsample <- c(treatment.group[-(1:ceiling((0.8*149930*0.4)))], subsample.control.group[-(1:ceiling((0.8*149930*0.6)))])
 
 # Initialize parameters
-num.reps.training = 50
+num.reps.training = 100
 num.reps.test = 10
 numtrees <- 2000 # Set to 2000 or 8000 to perform sensitivity analysis.
 
 # Different training sample sizes
-training.sample.size <- c(200, 400, 600, 800, 1000, 1200, 2000, 4000) 
+# training.sample.size <- c(200, 400, 600, 800, 1000, 1200, 2000, 4000) 
+training.sample.size <- c(2000, 4000) 
 # training.sample.size <- c(5000, 10000, 20000, 50000)
 n.test <- 2000
 
@@ -252,3 +255,6 @@ run_method = function(training.sample.size, num.reps) {
 }
 
 results.semi.synthetic = run_method(training.sample.size, num.reps)
+
+
+
