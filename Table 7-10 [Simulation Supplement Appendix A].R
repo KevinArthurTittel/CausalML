@@ -1,4 +1,4 @@
-num.reps <- 25
+num.reps <- 50
 n.training <- c(200, 400, 600, 800, 1000, 1200)
 d <- 25
 numtrees = 4000
