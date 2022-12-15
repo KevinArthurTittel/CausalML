@@ -41,7 +41,7 @@ colnames(X) <- c("Loan.Officer", "Stratification", "Age", "Married", "Literate",
                  "Rs 6000 loan", "Rs 8000 loan", "Rs 9000 loan", "Rs 10000 loan")
 
 ####################
-##### Figure 1 #####
+##### Figure 7 #####
 ####################
 
 hist(X$Age, xlab = "Age", ylab = "Number of observations", xlim = c(15, 60), ylim = c(0, 200), main = "", col = "orange")
@@ -49,7 +49,7 @@ hist(X$`HH Size`, xlab = "Household Size", ylab = "Number of observations", xlim
 hist(X$`Years of Education`, xlab = "Years of Education", ylab = "Number of observations", xlim = c(0, 15), ylim = c(0, 200), main = "", col = "orange")
 
 ####################
-##### Figure 2 #####
+##### Figure 8 #####
 ####################
 
 binary.data <- matrix(data = 0, nrow = 2, ncol = 6)
@@ -71,7 +71,7 @@ barplot(as.matrix(binary.data), beside = TRUE, main = "", col = c("red", "orange
 legend(x = 15.5, y = 865, c("Yes", "No"), fill = c("orange", "red"), box.lty = 0, cex = 0.75)
 
 ####################
-##### Figure 3 #####
+##### Figure 9 #####
 ####################
 
 ggplot(data = Grace_Period_Data, mapping = aes(x = Years_Education_C, y = Age_C)) +
@@ -113,9 +113,18 @@ ggplot(data = Grace_Period_Data, mapping = aes(x = Years_Education_C, y = Financ
         axis.title.x = element_text(colour = "black", size = 10),
         axis.title.y = element_text(colour = "black", size = 10))
 
-####################
-##### Figure 4 #####
-####################
+#####################
+##### Figure 10 #####
+#####################
+
+mydata.cor <- cor(X)
+mydata.p <- round(mydata.p, 3)
+mydata.p[is.na(mydata.p) == TRUE] <- 0
+heatmap(as.matrix(mydata.p), Colv = NA, Rowv = NA, cexRow=0.90, cexCol = 0.60)
+
+#####################
+##### Figure 11 #####
+#####################
 
 # Create graphs to illustrate smoothness
 Grace_Period_Data <- Grace_Period_Data[!(Grace_Period_Data$Age_C == 0),]
